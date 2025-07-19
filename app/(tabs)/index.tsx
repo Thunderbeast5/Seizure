@@ -1,75 +1,132 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { View, Text, TouchableOpacity, StatusBar, Alert } from "react-native";
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
+  const handleSeizureDiary = () => {
+    console.log('Attempting to navigate to seizure diary...');
+    try {
+      router.navigate('/screens/seizure-diary');
+      console.log('Navigation to seizure diary attempted');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to seizure diary');
+    }
+  };
+
+  const handleMedicationReminder = () => {
+    console.log('Attempting to navigate to medication reminder...');
+    try {
+      router.navigate('/screens/medication-reminder');
+      console.log('Navigation to medication reminder attempted');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to medication reminder');
+    }
+  };
+
+  const handleDoctorConnect = () => {
+    console.log('Attempting to navigate to doctor connect...');
+    try {
+      router.navigate('/screens/doctor-connect');
+      console.log('Navigation to doctor connect attempted');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to doctor connect');
+    }
+  };
+
+  const handleEducation = () => {
+    console.log('Attempting to navigate to education...');
+    try {
+      router.navigate('/screens/education');
+      console.log('Navigation to education attempted');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', 'Could not navigate to education');
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <>
+      <StatusBar hidden={true} />
+      <View className="flex-1 bg-blue-50 px-6 py-8">
+        
+        {/* App Title */}
+        <View className="items-center mb-12 mt-4">
+          <Text className="text-3xl font-bold text-blue-800 tracking-wide">
+            Seizure Tracker
+          </Text>
+        </View>
+
+        {/* Main Action Buttons Grid */}
+        <View className="flex-1 justify-center">
+          
+          {/* First Row */}
+          <View className="flex-row justify-between mb-6">
+            <TouchableOpacity 
+              className="bg-white rounded-xl p-6 flex-1 mr-3 shadow-lg border border-blue-100"
+              onPress={handleSeizureDiary}
+              activeOpacity={0.7}
+            >
+              <View className="items-center">
+                <Text className="text-4xl mb-3">📝</Text>
+                <Text className="text-lg font-semibold text-gray-800 text-center">
+                  Seizure Diary
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              className="bg-white rounded-xl p-6 flex-1 ml-3 shadow-lg border border-blue-100"
+              onPress={handleMedicationReminder}
+              activeOpacity={0.7}
+            >
+              <View className="items-center">
+                <Text className="text-4xl mb-3">💊</Text>
+                <Text className="text-lg font-semibold text-gray-800 text-center">
+                  Medication Reminder
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Second Row */}
+          <View className="flex-row justify-between">
+            <TouchableOpacity 
+              className="bg-white rounded-xl p-6 flex-1 mr-3 shadow-lg border border-blue-100"
+              onPress={handleDoctorConnect}
+              activeOpacity={0.7}
+            >
+              <View className="items-center">
+                <Text className="text-4xl mb-3">👨‍⚕️</Text>
+                <Text className="text-lg font-semibold text-gray-800 text-center">
+                  Doctor Connect
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              className="bg-white rounded-xl p-6 flex-1 ml-3 shadow-lg border border-blue-100"
+              onPress={handleEducation}
+              activeOpacity={0.7}
+            >
+              <View className="items-center">
+                <Text className="text-4xl mb-3">📚</Text>
+                <Text className="text-lg font-semibold text-gray-800 text-center">
+                  Education
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Emergency Contact Info */}
+        {/* <View className="mt-8 mb-4">
+          <Text className="text-center text-gray-600 text-sm">
+            For medical emergencies, call your local emergency number
+          </Text>
+        </View> */}
+      </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

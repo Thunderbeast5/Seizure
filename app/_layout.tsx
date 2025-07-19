@@ -2,8 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
+import "../global.css";
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function RootLayout() {
@@ -13,15 +12,45 @@ export default function RootLayout() {
   });
 
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Main tabs group */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        
+        {/* Individual feature screens */}
+        <Stack.Screen 
+          name="screens/seizure-diary" 
+          options={{ 
+            headerShown: false, 
+            title: "Seizure Diary",
+            presentation: "card"
+          }} 
+        />
+        <Stack.Screen 
+          name="screens/medication-reminder" 
+          options={{ 
+            headerShown: false, 
+            title: "Medication Reminder" 
+          }} 
+        />
+        <Stack.Screen 
+          name="screens/doctor-connect" 
+          options={{ 
+            headerShown: false, 
+            title: "Doctor Connect" 
+          }} 
+        />
+        <Stack.Screen 
+          name="screens/education" 
+          options={{ 
+            headerShown: false, 
+            title: "Education" 
+          }} 
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
