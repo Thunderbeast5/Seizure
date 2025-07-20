@@ -104,7 +104,7 @@ export default function MedicationsScreen() {
   };
 
   const renderMedicationList = () => (
-    <ScrollView className="flex-1 p-6">
+    <ScrollView className="flex-1 p-6"  showsVerticalScrollIndicator={false}>
       {medications.map((med) => (
         <View key={med.id} className="bg-white rounded-2xl p-6 mb-6 shadow-lg">
           <View className="flex-row justify-between items-center mb-4">
@@ -179,7 +179,7 @@ export default function MedicationsScreen() {
   );
 
   const renderAddForm = () => (
-    <ScrollView className="flex-1 p-6">
+    <ScrollView className="flex-1 p-6"  showsVerticalScrollIndicator={false}>
       <View className="mb-6">
         <Text className="text-xl font-medium text-slate-800 mb-3">Medication Name*</Text>
         <View className="bg-white rounded-xl p-5 shadow-sm">
