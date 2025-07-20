@@ -289,9 +289,9 @@ export default function MedicationsScreen() {
 
   return (
     <SafeAreaView className="flex-1  bg-blue-50">
-      <View className="flex-row items-center justify-between   bg-blue-50 ">
+      <View className="flex-row items-center justify-between  bg-blue-50 ">
         <TouchableOpacity 
-          className="p-3"
+          className="p-2"
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={28} color="#4A90E2" />
