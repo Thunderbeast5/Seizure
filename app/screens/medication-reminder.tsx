@@ -288,8 +288,8 @@ export default function MedicationsScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-cyan-50">
-      <View className="flex-row items-center justify-between  bg-cyan-50 ">
+    <SafeAreaView className="flex-1  bg-blue-50">
+      <View className="flex-row items-center justify-between   bg-blue-50 ">
         <TouchableOpacity 
           className="p-3"
           onPress={() => navigation.goBack()}

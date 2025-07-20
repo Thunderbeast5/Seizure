@@ -10,8 +10,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#000',
-        tabBarInactiveTintColor:'#000', // A dark color for contrast against the light blue BG
+        tabBarActiveTintColor: '#fff',
+        tabBarInactiveTintColor:'#fff', // A dark color for contrast against the light blue BG
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
@@ -21,7 +21,7 @@ export default function TabLayout() {
           right: 40,  // Further increased margin to make tab narrower
           height: 80, // Slightly increased height to accommodate larger buttons
           borderRadius: 100, // Adjusted to maintain pill shape
-          backgroundColor: '#4A90E2',
+          backgroundColor: '#1E88E5',
           // Platform-specific shadow for a floating effect
           ...Platform.select({
             ios: {
