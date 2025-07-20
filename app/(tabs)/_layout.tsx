@@ -1,25 +1,27 @@
 import "../../global.css";
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#000', // A dark color for contrast against the light blue BG
+        tabBarActiveTintColor: '#000',
+        tabBarInactiveTintColor:'#000', // A dark color for contrast against the light blue BG
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
           position: 'absolute',
-          bottom: 45, // Adjust for vertical positioning from the bottom
-          left: 20,   // Margin from the left edge
-          right: 20,  // Margin from the right edge
-          height: 60,
-          borderRadius: 35, // Half of the height to create a perfect pill shape
-          backgroundColor: 'lightblue',
+          bottom: 55, // Adjust for vertical positioning from the bottom
+          left: 40,   // Further increased margin to make tab narrower
+          right: 40,  // Further increased margin to make tab narrower
+          height: 80, // Slightly increased height to accommodate larger buttons
+          borderRadius: 100, // Adjusted to maintain pill shape
+          backgroundColor: '#4A90E2',
           // Platform-specific shadow for a floating effect
           ...Platform.select({
             ios: {
@@ -33,26 +35,69 @@ export default function TabLayout() {
             },
           }),
         },
+        tabBarIconStyle: {
+          marginTop: 10, // Add some top margin for better spacing
+        },
+        tabBarLabelStyle: {
+          fontSize: 16, // Larger font size for better readability
+          fontWeight: '600', // Semi-bold for better visibility
+          marginTop: 2,
+        },
       }}>
       
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Reports',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol 
+              size={32} 
+              name={focused ? "chart.bar.fill" : "chart.bar"} 
+              color={color} 
+            />
+          ),
         }}
       />
       
       <Tabs.Screen
         name="sos"
         options={{
-          title: 'SOS',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="exclamationmark.triangle.fill" color={color} />,
+          title: '',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              width: 120,  // Increased from 100
+              height: 120, // Increased from 100
+              borderRadius: 60, // Adjusted for new size
+              backgroundColor: focused ? '#ff4444' : '#ff6666',
+              justifyContent: 'center',
+              alignItems: 'center',
+              position: 'absolute',
+              top: -40, // Centers vertically: -(height/2) + (tabBar height/2) = -(120/2) + (80/2) = -60 + 40 = -20, but we want it more centered so -60
+              left: '50%',
+              marginLeft: -60, // Centers horizontally: -(width/2) = -(120/2) = -60
+              borderWidth: 4,
+              borderColor: 'white',
+              ...Platform.select({
+                ios: {
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                },
+                android: {
+                  elevation: 8,
+                },
+              }),
+            }}>
+              <IconSymbol size={50} name="exclamationmark.triangle.fill" color="white" />
+            </View>
+          ),
           tabBarLabelStyle: { 
-           
-            fontSize: 14, // Slightly larger label text
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: '#ff4444',
+            marginTop: -45, // Adjusted for the larger button
           },
-          
         }}
       />
       
@@ -60,7 +105,13 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.circle" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol 
+              size={32} 
+              name={focused ? "person.circle.fill" : "person.circle"} 
+              color={color} 
+            />
+          ),
         }}
       />
 

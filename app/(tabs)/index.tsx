@@ -1,7 +1,9 @@
-import { View, Text, TouchableOpacity, StatusBar, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StatusBar, Alert, StyleSheet, ScrollView, SafeAreaView } from "react-native";
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
+
   const handleSeizureDiary = () => {
     console.log('Attempting to navigate to seizure diary...');
     try {
@@ -47,86 +49,130 @@ export default function HomeScreen() {
   };
 
   return (
-    <>
-      <StatusBar hidden={true} />
-      <View className="flex-1 bg-blue-50 px-6 py-8">
-        
-        {/* App Title */}
-        <View className="items-center mb-12 mt-4">
-          <Text className="text-3xl font-bold text-blue-800 tracking-wide">
-            Seizure Tracker
-          </Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Updated Header with proper spacing */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Seizure Tracker</Text>
+          <Text style={styles.headerSubtitle}>Pediatric Seizure Monitoring</Text>
         </View>
 
-        {/* Main Action Buttons Grid */}
-        <View className="flex-1 justify-center">
-          
-          {/* First Row */}
-          <View className="flex-row justify-between mb-6">
-            <TouchableOpacity 
-              className="bg-white rounded-xl p-6 flex-1 mr-3 shadow-lg border border-blue-100"
-              onPress={handleSeizureDiary}
-              activeOpacity={0.7}
-            >
-              <View className="items-center">
-                <Text className="text-4xl mb-3">📝</Text>
-                <Text className="text-lg font-semibold text-gray-800 text-center">
-                  Seizure Diary
-                </Text>
-              </View>
-            </TouchableOpacity>
+        {/* Feature Buttons Grid */}
+        <View style={styles.featuresContainer}>
+          <TouchableOpacity 
+            style={styles.featureButton} 
+            onPress={handleSeizureDiary}
+          >
+            <View style={styles.featureIconContainer}>
+              <Ionicons name="calendar" size={48} color="#4A90E2" />
+            </View>
+            <Text style={styles.featureText}>Seizure Diary</Text>
+            <Text style={styles.featureDescription}>Log and track seizures</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              className="bg-white rounded-xl p-6 flex-1 ml-3 shadow-lg border border-blue-100"
-              onPress={handleMedicationReminder}
-              activeOpacity={0.7}
-            >
-              <View className="items-center">
-                <Text className="text-4xl mb-3">💊</Text>
-                <Text className="text-lg font-semibold text-gray-800 text-center">
-                  Medication Reminder
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.featureButton} 
+            onPress={handleMedicationReminder}
+          >
+            <View style={styles.featureIconContainer}>
+              <Ionicons name="medical" size={48} color="#4A90E2" />
+            </View>
+            <Text style={styles.featureText}>Medication Reminder</Text>
+            <Text style={styles.featureDescription}>Track and set reminders</Text>
+          </TouchableOpacity>
 
-          {/* Second Row */}
-          <View className="flex-row justify-between">
-            <TouchableOpacity 
-              className="bg-white rounded-xl p-6 flex-1 mr-3 shadow-lg border border-blue-100"
-              onPress={handleDoctorConnect}
-              activeOpacity={0.7}
-            >
-              <View className="items-center">
-                <Text className="text-4xl mb-3">👨‍⚕️</Text>
-                <Text className="text-lg font-semibold text-gray-800 text-center">
-                  Doctor Connect
-                </Text>
-              </View>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.featureButton} 
+            onPress={handleDoctorConnect}
+          >
+            <View style={styles.featureIconContainer}>
+              <Ionicons name="people" size={48} color="#4A90E2" />
+            </View>
+            <Text style={styles.featureText}>Doctor Connect</Text>
+            <Text style={styles.featureDescription}>Share data with doctors</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              className="bg-white rounded-xl p-6 flex-1 ml-3 shadow-lg border border-blue-100"
-              onPress={handleEducation}
-              activeOpacity={0.7}
-            >
-              <View className="items-center">
-                <Text className="text-4xl mb-3">📚</Text>
-                <Text className="text-lg font-semibold text-gray-800 text-center">
-                  Education
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.featureButton} 
+            onPress={handleEducation}
+          >
+            <View style={styles.featureIconContainer}>
+              <Ionicons name="book" size={48} color="#4A90E2" />
+            </View>
+            <Text style={styles.featureText}>Education</Text>
+            <Text style={styles.featureDescription}>Articles and tips</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Emergency Contact Info */}
-        {/* <View className="mt-8 mb-4">
-          <Text className="text-center text-gray-600 text-sm">
-            For medical emergencies, call your local emergency number
-          </Text>
-        </View> */}
-      </View>
-    </>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#E6F3F8', // Light blue calming background
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    padding: 16,
+  },
+  header: {
+    alignItems: 'center',
+    marginTop: 40, // Keep original header position
+    marginBottom: 40, // Keep original spacing
+    paddingHorizontal: 20,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 18,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  featuresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 20, // Reduced margin to bring buttons up
+    paddingBottom: 40, // Add bottom padding for better spacing
+  },
+  featureButton: {
+    backgroundColor: 'white',
+    width: '48%', 
+    padding: 24, 
+    borderRadius: 16, 
+    marginBottom: 24, 
+    alignItems: 'center',
+    minHeight: 180, // Keep larger height for bigger icons
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  featureIconContainer: {
+    marginBottom: 16, 
+    padding: 8, 
+  },
+  featureText: {
+    fontSize: 20, 
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 8, 
+    textAlign: 'center',
+  },
+  featureDescription: {
+    fontSize: 16, 
+    color: '#7F8C8D',
+    textAlign: 'center',
+    lineHeight: 22, 
+  },
+});
