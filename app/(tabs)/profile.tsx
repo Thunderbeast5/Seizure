@@ -50,14 +50,7 @@ const INITIAL_PROFILE = {
       email: 'jennifer@example.com',
       isPrimary: true
     },
-    {
-      id: '3',
-      name: 'Margaret Wilson',
-      relation: 'Grandmother',
-      phone: '555-456-7890',
-      email: 'margaret@example.com',
-      isPrimary: false
-    }
+   
   ],
   emergencyContacts: [
     {
@@ -370,7 +363,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-blue-50">
+    <SafeAreaView className="flex-1 bg-blue-50 overflow-hidden">
       <View className="flex-row items-center justify-between p-4 bg-blue-50 ">
         <TouchableOpacity 
           className="p-2"
@@ -383,6 +376,7 @@ export default function ProfileScreen() {
       </View>
 
       <View className="bg-blue-50 ">
+        
         <ScrollView 
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -480,7 +474,7 @@ export default function ProfileScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView className="flex-1 p-4">
+      <ScrollView className="flex-1 p-4 mb-20" style={{ overflow: 'hidden' }}>
         {activeSection === 'child' && renderChildSection()}
         {activeSection === 'diagnosis' && renderDiagnosisSection()}
         {activeSection === 'caregivers' && renderCaregiversSection()}

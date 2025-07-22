@@ -155,6 +155,7 @@ export default function ReportsScreen() {
         </TouchableOpacity>
       </View>
 
+<View style={{ flex: 1, overflow: 'hidden', marginBottom: 90 }}>
       <ScrollView className="p-4">
         <View className="flex-row bg-white rounded-lg mb-5 shadow-sm overflow-hidden">
           <TouchableOpacity 
@@ -232,6 +233,7 @@ export default function ReportsScreen() {
           <Text className="text-white text-xl font-medium ml-2">Export Report for Doctor</Text>
         </TouchableOpacity>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

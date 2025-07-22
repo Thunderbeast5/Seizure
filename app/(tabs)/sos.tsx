@@ -66,7 +66,14 @@ export default function EmergencyScreen() {
         <View className="w-10" />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <View style={{ flex: 1, overflow: 'hidden', marginBottom: 90 }}>
+        <ScrollView 
+          contentContainerStyle={{ 
+            padding: 16,
+            paddingBottom: 20
+          }}
+          showsVerticalScrollIndicator={true}
+        >
         <View className="mb-6">
           <Text className="text-xl font-bold text-gray-800 mb-2">Send Emergency Alert</Text>
           <Text className="text-lg text-gray-500 mb-4">
@@ -184,7 +191,8 @@ export default function EmergencyScreen() {
             <Text className="text-lg text-blue-500 ml-1">Add Emergency Contact</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
