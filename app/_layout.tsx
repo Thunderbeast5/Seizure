@@ -18,6 +18,15 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
+        {/* Landing Page */}
+        <Stack.Screen 
+          name="landing" 
+          options={{ 
+            headerShown: false,
+            animation: 'fade',
+          }} 
+        />
+        
         {/* Main tabs group */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         
