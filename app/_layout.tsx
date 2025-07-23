@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import "../global.css";
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { AppWrapper } from '@/components/AppWrapper';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -17,7 +18,25 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <AppWrapper>
+      <Stack screenOptions={{ headerShown: false }}
+       >
+         {/* <Stack screenOptions={{ headerShown: false }}
+       initialRouteName="landing">*/}
+
+        {/* Initial landing screen
+        <Stack.Screen 
+          name="landing" 
+          options={{ 
+            headerShown: false,
+            animation: 'fade',
+            // Prevent going back to landing once user proceeds
+            gestureEnabled: false,
+          }} 
+        /> */}
+
+        
+        
         {/* Main tabs group */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         
@@ -52,6 +71,7 @@ export default function RootLayout() {
           }} 
         />
       </Stack>
+      </AppWrapper>
       <StatusBar style="auto" />
     </ThemeProvider>
   );
