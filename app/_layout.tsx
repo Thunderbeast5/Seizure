@@ -19,58 +19,71 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AppWrapper>
-      <Stack screenOptions={{ headerShown: false }}
-       >
-         {/* <Stack screenOptions={{ headerShown: false }}
-       initialRouteName="landing">*/}
-
-        {/* Initial landing screen
-        <Stack.Screen 
-          name="landing" 
-          options={{ 
-            headerShown: false,
-            animation: 'fade',
-            // Prevent going back to landing once user proceeds
-            gestureEnabled: false,
-          }} 
-        /> */}
-
+        <Stack 
+          screenOptions={{ headerShown: false }}
+        >
+          {/* Default index route that shows landing */}
+          <Stack.Screen 
+            name="index" 
+            options={{ 
+              headerShown: false,
+              animation: 'fade',
+              gestureEnabled: false,
+            }} 
+          />
+          
+          {/* Signup screen */}
+          <Stack.Screen 
+            name="login" 
+            options={{ 
+              headerShown: false,
+              animation: 'fade',
+              gestureEnabled: true,
+            }} 
+          />
+          <Stack.Screen 
+            name="signup" 
+            options={{ 
+              headerShown: false,
+              animation: 'fade',
+              gestureEnabled: true,
+            }} 
+          />
         
-        
-        {/* Main tabs group */}
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        
-        {/* Individual feature screens */}
-        <Stack.Screen 
-          name="screens/seizure-diary" 
-          options={{ 
-            headerShown: false, 
-            title: "Seizure Diary",
-            presentation: "card"
-          }} 
-        />
-        <Stack.Screen 
-          name="screens/medication-reminder" 
-          options={{ 
-            headerShown: false, 
-            title: "Medication Reminder" 
-          }} 
-        />
-        <Stack.Screen 
-          name="screens/doctor-connect" 
-          options={{ 
-            headerShown: false, 
-            title: "Doctor Connect" 
-          }} 
-        />
-        <Stack.Screen 
-          name="screens/education" 
-          options={{ 
-            headerShown: false, 
-            title: "Education" 
-          }} 
-        />
-      </Stack>
+          {/* Main tabs group */}
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          
+          {/* Individual feature screens */}
+          <Stack.Screen 
+            name="screens/seizure-diary" 
+            options={{ 
+              headerShown: false, 
+              title: "Seizure Diary",
+              presentation: "card"
+            }} 
+          />
+          <Stack.Screen 
+            name="screens/medication-reminder" 
+            options={{ 
+              headerShown: false, 
+              title: "Medication Reminder" 
+            }} 
+          />
+          <Stack.Screen 
+            name="screens/doctor-connect" 
+            options={{ 
+              headerShown: false, 
+              title: "Doctor Connect" 
+            }} 
+          />
+          <Stack.Screen 
+            name="screens/education" 
+            options={{ 
+              headerShown: false, 
+              title: "Education" 
+            }} 
+          />
+        </Stack>
       </AppWrapper>
       <StatusBar style="auto" />
     </ThemeProvider>

@@ -4,10 +4,13 @@ import React from 'react';
 import { Platform, View } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { LanguageProvider } from "@/contexts/LanguageContext";
+
 
 
 export default function TabLayout() {
   return (
+    <LanguageProvider>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#fff',
@@ -124,5 +127,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </LanguageProvider>
   );
 }
