@@ -1,8 +1,8 @@
-// index.tsx - Updated with multilingual support
-import { View, Text, TouchableOpacity, StatusBar, Alert, ScrollView, SafeAreaView, Platform, Animated, Dimensions, Modal, I18nManager } from "react-native";
+// index.tsx - Updated with multilingual support and fixed RTL handling
+import { View, Text, TouchableOpacity, StatusBar, Alert, ScrollView, SafeAreaView, Platform, Animated, Dimensions, Modal } from "react-native";
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { BlurView } from 'expo-blur';
 import { useLanguage } from '../../contexts/LanguageContext'
 import { LanguageSelector } from '../../components/LanguageSelector';
@@ -16,15 +16,13 @@ export default function HomeScreen() {
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   
   // Get language context
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, currentLanguage } = useLanguage();
 
-  // Configure RTL layout
-  useEffect(() => {
-    I18nManager.forceRTL(isRTL);
-  }, [isRTL]);
+  // Remove the problematic useEffect for RTL
+  // RTL should be handled at the app level, not component level
 
   // --- Handler for the menu button ---
-  const handleMenuPress = () => {
+  const handleMenuPress = useCallback(() => {
     console.log('Menu button pressed!');
     setIsDrawerOpen(true);
     
@@ -41,9 +39,9 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [slideAnimation, overlayOpacity]);
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     // Animate drawer slide out
     Animated.parallel([
       Animated.timing(slideAnimation, {
@@ -59,9 +57,9 @@ export default function HomeScreen() {
     ]).start(() => {
       setIsDrawerOpen(false);
     });
-  };
+  }, [slideAnimation, overlayOpacity]);
 
-  const handleSeizureDiary = () => {
+  const handleSeizureDiary = useCallback(() => {
     console.log('Attempting to navigate to seizure diary...');
     try {
       router.navigate('/screens/seizure-diary');
@@ -70,9 +68,9 @@ export default function HomeScreen() {
       console.error('Navigation error:', error);
       Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('seizure_diary')}`);
     }
-  };
+  }, [t]);
 
-  const handleMedicationReminder = () => {
+  const handleMedicationReminder = useCallback(() => {
     console.log('Attempting to navigate to medication reminder...');
     try {
       router.navigate('/screens/medication-reminder');
@@ -81,9 +79,9 @@ export default function HomeScreen() {
       console.error('Navigation error:', error);
       Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('medication_reminder')}`);
     }
-  };
+  }, [t]);
 
-  const handleDoctorConnect = () => {
+  const handleDoctorConnect = useCallback(() => {
     console.log('Attempting to navigate to doctor connect...');
     try {
       router.navigate('/screens/doctor-connect');
@@ -92,9 +90,9 @@ export default function HomeScreen() {
       console.error('Navigation error:', error);
       Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('doctor_connect')}`);
     }
-  };
+  }, [t]);
 
-  const handleEducation = () => {
+  const handleEducation = useCallback(() => {
     console.log('Attempting to navigate to education...');
     try {
       router.navigate('/screens/education');
@@ -103,12 +101,19 @@ export default function HomeScreen() {
       console.error('Navigation error:', error);
       Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('education')}`);
     }
-  };
+  }, [t]);
 
-  const handleLanguageSelect = () => {
+  const handleLanguageSelect = useCallback(() => {
     closeDrawer();
-    setIsLanguageSelectorVisible(true);
-  };
+    // Add a small delay to ensure drawer is closed before opening language selector
+    setTimeout(() => {
+      setIsLanguageSelectorVisible(true);
+    }, 300);
+  }, [closeDrawer]);
+
+  const handleGoToLogin = useCallback(() => {
+    router.replace('/login'); 
+  }, []);
 
   const DrawerMenu = () => (
     <Modal
@@ -243,7 +248,7 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                handleSeizureDiary();
+                setTimeout(handleSeizureDiary, 300);
               }}
             >
               <Ionicons 
@@ -280,7 +285,7 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                handleMedicationReminder();
+                setTimeout(handleMedicationReminder, 300);
               }}
             >
               <Ionicons 
@@ -317,7 +322,7 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                handleDoctorConnect();
+                setTimeout(handleDoctorConnect, 300);
               }}
             >
               <Ionicons 
@@ -354,7 +359,7 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                handleEducation();
+                setTimeout(handleEducation, 300);
               }}
             >
               <Ionicons 
@@ -391,7 +396,9 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                Alert.alert(t('settings'), t('settings_coming_soon'));
+                setTimeout(() => {
+                  Alert.alert(t('settings'), t('settings_coming_soon'));
+                }, 300);
               }}
             >
               <Ionicons 
@@ -428,7 +435,9 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                Alert.alert(t('help_support'), t('help_coming_soon'));
+                setTimeout(() => {
+                  Alert.alert(t('help_support'), t('help_coming_soon'));
+                }, 300);
               }}
             >
               <Ionicons 
@@ -465,7 +474,9 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                Alert.alert(t('about'), t('about_coming_soon'));
+                setTimeout(() => {
+                  Alert.alert(t('about'), t('about_coming_soon'));
+                }, 300);
               }}
             >
               <Ionicons 
@@ -502,7 +513,7 @@ export default function HomeScreen() {
               }}
               onPress={() => {
                 closeDrawer();
-                Alert.alert(t('logout'), t('logout_coming_soon'));
+                setTimeout(handleGoToLogin, 300);
               }}
             >
               <Ionicons 
@@ -541,8 +552,8 @@ export default function HomeScreen() {
             flexDirection: isRTL ? 'row-reverse' : 'row',
             alignItems: 'center',
             marginTop: 32,
-            marginBottom: 40,
-            paddingHorizontal: 20,
+            marginBottom: 10,
+            paddingHorizontal: 0,
             justifyContent: Platform.OS === 'android' ? 'flex-start' : 'space-between',
           }}
         >

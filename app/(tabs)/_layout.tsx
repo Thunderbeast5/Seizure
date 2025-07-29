@@ -92,7 +92,7 @@ export default function TabLayout() {
                 },
               }),
             }}>
-              <IconSymbol size={50} name="exclamationmark.triangle.fill" color="white" />
+              <IconSymbol size={70} name="light.beacon.max.fill" color="white" />
             </View>
           ),
           tabBarLabelStyle: { 
