@@ -1,24 +1,49 @@
 import { View, Text, TouchableOpacity, Alert, TextInput, ActivityIndicator } from 'react-native';
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import { FirebaseError } from 'firebase/app';
 
 const Login: React.FC = () => {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const getFirebaseErrorMessage = (error: FirebaseError) => {
+    switch (error.code) {
+      case 'auth/user-not-found':
+        return 'No account found with this email address.';
+      case 'auth/wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/user-disabled':
+        return 'This account has been disabled.';
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      case 'auth/invalid-credential':
+        return 'Invalid email or password. Please check your credentials.';
+      default:
+        return 'An error occurred during login. Please try again.';
+    }
+  };
+
   const handleLogin = async () => {
     // Basic validation
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('Validation Error', 'Please enter both username and password.');
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Validation Error', 'Please enter both email and password.');
       return;
     }
 
-    // Additional validation
-    if (username.trim().length < 3) {
-      Alert.alert('Validation Error', 'Username must be at least 3 characters long.');
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Validation Error', 'Please enter a valid email address.');
       return;
     }
 
@@ -30,29 +55,18 @@ const Login: React.FC = () => {
     setIsLoading(true);
     
     try {
-      console.log('Login attempt with:', { username: username.trim(), password: '***' });
-      
-      // Simulate API call - replace with your actual authentication logic
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Here you would typically:
-      // 1. Make API call to your authentication endpoint
-      // 2. Store authentication token
-      // 3. Update user context/state
-      
-      // For demo purposes, let's simulate success
-      const isSuccess = true; // Replace with actual authentication result
-      
-      if (isSuccess) {
-        console.log('Login successful');
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert('Login Failed', 'Invalid username or password. Please try again.');
-      }
+      await login(email.trim(), password);
+      console.log('Login successful');
+      router.replace('/(tabs)');
       
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Error', 'An error occurred during login. Please try again.');
+      
+      if (error instanceof FirebaseError) {
+        Alert.alert('Login Failed', getFirebaseErrorMessage(error));
+      } else {
+        Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -77,14 +91,15 @@ const Login: React.FC = () => {
       
       <View className="w-full mb-4">
         <TextInput
-          className="w-full px-4 py-3 border border-gray-300 rounded-md "
-          placeholder="Username or Email"
+          className="w-full px-4 py-3 border border-gray-300 rounded-md"
+          placeholder="Email"
           placeholderTextColor="#4B5563"
-          value={username}
-          onChangeText={setUsername}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          autoComplete="username"
+          autoComplete="email"
           editable={!isLoading}
         />
       </View>
@@ -141,7 +156,7 @@ const Login: React.FC = () => {
       </TouchableOpacity>
 
       <View className="flex-row mt-6">
-        <Text className="text-gray-600">New User?</Text>
+        <Text className="text-gray-600">New User? </Text>
         <TouchableOpacity onPress={handleSignUp} disabled={isLoading}>
           <Text className="text-blue-500 font-semibold">Sign Up</Text>
         </TouchableOpacity>

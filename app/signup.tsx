@@ -1,10 +1,13 @@
-import { View, Text, TouchableOpacity, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform, Animated, ActivityIndicator } from 'react-native';
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
+import { useAuth } from '../contexts/AuthContext';
+import { FirebaseError } from 'firebase/app';
 
 const SignUp: React.FC = () => {
   const router = useRouter();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -14,6 +17,7 @@ const SignUp: React.FC = () => {
   const [seizureType, setSeizureType] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   // Dropdown states
   const [genderDropdownVisible, setGenderDropdownVisible] = useState(false);
@@ -41,6 +45,21 @@ const SignUp: React.FC = () => {
     'No History of Seizures'
   ];
 
+  const getFirebaseErrorMessage = (error: FirebaseError) => {
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists.';
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.';
+      case 'auth/weak-password':
+        return 'Password should be at least 6 characters long.';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return 'An error occurred during registration. Please try again.';
+    }
+  };
+
   const animateDropdown = (animation: Animated.Value, toValue: number) => {
     Animated.timing(animation, {
       toValue,
@@ -50,6 +69,8 @@ const SignUp: React.FC = () => {
   };
 
   const toggleDropdown = (type: 'gender' | 'bloodGroup' | 'seizureType') => {
+    if (isLoading) return;
+    
     // Close all other dropdowns first
     if (type !== 'gender') {
       setGenderDropdownVisible(false);
@@ -104,7 +125,7 @@ const SignUp: React.FC = () => {
     }
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     // Basic validation
     if (!name.trim() || !email.trim() || !username.trim() || !age.trim() || !gender || !bloodGroup || !seizureType || !password || !confirmPassword) {
       Alert.alert('Validation Error', 'Please fill in all fields.');
@@ -142,31 +163,45 @@ const SignUp: React.FC = () => {
       return;
     }
     
-    console.log('Sign Up button pressed with:', { 
-      name: name.trim(), 
-      email: email.trim(), 
-      username: username.trim(), 
-      age: ageNum, 
-      gender, 
-      bloodGroup, 
-      seizureType, 
-      password: '***' 
-    });
+    setIsLoading(true);
     
-    // Add your user creation logic here (e.g., API call)
-    
-    // For now, we'll just show an alert and navigate to the login page
-    Alert.alert(
-      'Success',
-      'Account created successfully! Please log in.',
-      [
-        { text: 'OK', onPress: () => router.replace('/login') }
-      ]
-    );
+    try {
+      await register({
+        name: name.trim(),
+        email: email.trim(),
+        username: username.trim(),
+        age: ageNum,
+        gender,
+        bloodGroup,
+        seizureType,
+        password
+      });
+      
+      Alert.alert(
+        'Success',
+        'Account created successfully! You are now logged in.',
+        [
+          { text: 'OK', onPress: () => router.replace('/(tabs)') }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Registration error:', error);
+      
+      if (error instanceof FirebaseError) {
+        Alert.alert('Registration Failed', getFirebaseErrorMessage(error));
+      } else {
+        Alert.alert('Registration Error', 'An unexpected error occurred. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoToLogin = () => {
-    router.replace('/login'); 
+    if (!isLoading) {
+      router.replace('/login');
+    }
   };
 
   const DropdownMenu = ({ 
@@ -216,6 +251,7 @@ const SignUp: React.FC = () => {
                   className="px-4 py-3 border-b border-gray-100 active:bg-blue-50"
                   onPress={() => onSelect(option)}
                   activeOpacity={0.7}
+                  disabled={isLoading}
                 >
                   <Text className="text-base text-gray-800">{option}</Text>
                 </TouchableOpacity>
@@ -252,6 +288,7 @@ const SignUp: React.FC = () => {
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
+            editable={!isLoading}
           />
 
           <TextInput
@@ -263,6 +300,7 @@ const SignUp: React.FC = () => {
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            editable={!isLoading}
           />
 
           <TextInput
@@ -273,6 +311,7 @@ const SignUp: React.FC = () => {
             onChangeText={setUsername}
             autoCapitalize="none"
             autoComplete="username"
+            editable={!isLoading}
           />
 
           <TextInput
@@ -283,14 +322,16 @@ const SignUp: React.FC = () => {
             onChangeText={setAge}
             keyboardType="numeric"
             maxLength={3}
+            editable={!isLoading}
           />
 
           {/* Gender Dropdown */}
           <View className="w-full mb-4 relative z-30">
             <TouchableOpacity
-              className={`w-full px-4 py-3 border border-gray-300 ${genderDropdownVisible ? 'rounded-t-md' : 'rounded-md'} justify-center bg-white`}
+              className={`w-full px-4 py-3 border border-gray-300 ${genderDropdownVisible ? 'rounded-t-md' : 'rounded-md'} justify-center bg-white ${isLoading ? 'opacity-50' : ''}`}
               onPress={() => toggleDropdown('gender')}
               activeOpacity={0.7}
+              disabled={isLoading}
             >
               <View className="flex-row justify-between items-center">
                 <Text className={gender ? "text-black" : "text-gray-500"}>
@@ -310,9 +351,10 @@ const SignUp: React.FC = () => {
           {/* Blood Group Dropdown */}
           <View className="w-full mb-4 relative z-20">
             <TouchableOpacity
-              className={`w-full px-4 py-3 border border-gray-300 ${bloodGroupDropdownVisible ? 'rounded-t-md' : 'rounded-md'} justify-center bg-white`}
+              className={`w-full px-4 py-3 border border-gray-300 ${bloodGroupDropdownVisible ? 'rounded-t-md' : 'rounded-md'} justify-center bg-white ${isLoading ? 'opacity-50' : ''}`}
               onPress={() => toggleDropdown('bloodGroup')}
               activeOpacity={0.7}
+              disabled={isLoading}
             >
               <View className="flex-row justify-between items-center">
                 <Text className={bloodGroup ? "text-black" : "text-gray-500"}>
@@ -332,9 +374,10 @@ const SignUp: React.FC = () => {
           {/* Seizure Type Dropdown */}
           <View className="w-full mb-4 relative z-10">
             <TouchableOpacity
-              className={`w-full px-4 py-3 border border-gray-300 ${seizureTypeDropdownVisible ? 'rounded-t-md' : 'rounded-md'} justify-center bg-white`}
+              className={`w-full px-4 py-3 border border-gray-300 ${seizureTypeDropdownVisible ? 'rounded-t-md' : 'rounded-md'} justify-center bg-white ${isLoading ? 'opacity-50' : ''}`}
               onPress={() => toggleDropdown('seizureType')}
               activeOpacity={0.7}
+              disabled={isLoading}
             >
               <View className="flex-row justify-between items-center">
                 <Text className={seizureType ? "text-black" : "text-gray-500"}>
@@ -359,6 +402,7 @@ const SignUp: React.FC = () => {
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="new-password"
+            editable={!isLoading}
           />
 
           <TextInput
@@ -369,6 +413,7 @@ const SignUp: React.FC = () => {
             onChangeText={setConfirmPassword}
             secureTextEntry
             autoComplete="new-password"
+            editable={!isLoading}
           />
 
           <TouchableOpacity 

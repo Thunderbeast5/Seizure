@@ -1,10 +1,10 @@
-import "../../global.css";
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform, View } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { Platform, View } from 'react-native';
+import "../../global.css";
 
 
 

@@ -1,11 +1,11 @@
 // index.tsx - Updated with multilingual support and fixed RTL handling
-import { View, Text, TouchableOpacity, StatusBar, Alert, ScrollView, SafeAreaView, Platform, Animated, Dimensions, Modal } from "react-native";
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useRef, useEffect, useCallback } from 'react';
 import { BlurView } from 'expo-blur';
-import { useLanguage } from '../../contexts/LanguageContext'
+import { router } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Animated, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { LanguageSelector } from '../../components/LanguageSelector';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 

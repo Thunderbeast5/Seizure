@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import "../global.css";
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { AppWrapper } from '@/components/AppWrapper';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -18,6 +19,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <AuthProvider>
       <AppWrapper>
         <Stack 
           screenOptions={{ headerShown: false }}
@@ -86,6 +88,7 @@ export default function RootLayout() {
         </Stack>
       </AppWrapper>
       <StatusBar style="auto" />
+    </AuthProvider>
     </ThemeProvider>
   );
 }
