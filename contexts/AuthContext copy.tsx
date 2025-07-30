@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase.config';
 
 interface UserData {
@@ -20,7 +20,7 @@ interface UserData {
   gender: string;
   bloodGroup: string;
   seizureType: string;
-  createdAt: any; // Using any to handle both Date and serverTimestamp
+  createdAt: Date;
 }
 
 interface AuthContextType {
@@ -72,20 +72,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         // Fetch additional user data from Firestore
         try {
-          console.log('Fetching user data for:', user.uid);
+          console.log('Fetching user data for UID:', user.uid);
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            const data = userDoc.data() as UserData;
-            console.log('User data fetched:', data);
-            setUserData(data);
+            console.log('User data found:', userDoc.data());
+            setUserData(userDoc.data() as UserData);
           } else {
-            console.log('No user document found');
-            setUserData(null);
+            console.log('No user data found in Firestore for UID:', user.uid);
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
-          // Don't throw error here, just log it
-          setUserData(null);
         }
       } else {
         setUserData(null);
@@ -102,54 +98,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Authentication not initialized');
     }
     try {
-      console.log('Attempting login for:', email);
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Login successful for:', userCredential.user.uid);
+      console.log('Attempting to login with email:', email);
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login successful');
     } catch (error) {
-      console.error('Login error in context:', error);
+      console.error('Login error:', error);
       throw error;
     }
   };
 
   const register = async (registerData: RegisterData) => {
-    if (!auth || !db) {
-      throw new Error('Firebase services not initialized');
+    if (!auth) {
+      throw new Error('Authentication not initialized');
     }
     
+    if (!db) {
+      throw new Error('Firestore not initialized');
+    }
+
     try {
+      console.log('Starting registration process...');
       const { email, password, ...otherData } = registerData;
       
-      console.log('Creating user account for:', email);
       // Create user account
+      console.log('Creating user account for email:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
-      console.log('User account created:', user.uid);
+      console.log('User account created with UID:', user.uid);
 
       // Update user profile
+      console.log('Updating user profile...');
       await updateProfile(user, {
         displayName: registerData.name
       });
-      
-      console.log('Profile updated');
+      console.log('User profile updated');
 
-      // Save additional user data to Firestore
+      // Prepare user data for Firestore
       const userData: UserData = {
         uid: user.uid,
         email: user.email!,
         ...otherData,
-        createdAt: serverTimestamp() // Use server timestamp instead of new Date()
+        createdAt: new Date()
       };
 
       console.log('Saving user data to Firestore:', userData);
       
-      // Use merge: true to ensure the document is created or updated
-      await setDoc(doc(db, 'users', user.uid), userData, { merge: true });
-      
-      console.log('User data saved successfully');
+      // Save additional user data to Firestore
+      await setDoc(doc(db, 'users', user.uid), userData);
+      console.log('User data saved to Firestore successfully');
       
     } catch (error) {
-      console.error('Registration error in context:', error);
+      console.error('Registration error:', error);
       throw error;
     }
   };
@@ -159,8 +158,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Authentication not initialized');
     }
     try {
+      console.log('Logging out...');
       await signOut(auth);
-      setUserData(null); // Clear user data on logout
+      console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
       throw error;

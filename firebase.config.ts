@@ -1,7 +1,7 @@
 // firebase.config.ts
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your web app's Firebase configuration
@@ -12,7 +12,6 @@ const firebaseConfig = {
   storageBucket: "seizure-tracker-166f0.firebasestorage.app",
   messagingSenderId: "596929603017",
   appId: "1:596929603017:web:881986f40201a8043fb418"
-  // Remove measurementId to avoid analytics issues
 };
 
 // Initialize Firebase only if it hasn't been initialized already
@@ -23,11 +22,13 @@ if (getApps().length === 0) {
   app = getApps()[0];
 }
 
-// Initialize Auth with AsyncStorage persistence
+// Initialize Auth with AsyncStorage persistence for React Native
 let auth;
 try {
+  // Try to get existing auth instance first
   auth = getAuth(app);
 } catch (error) {
+  // If no auth instance exists, initialize with persistence
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
   });
@@ -35,6 +36,15 @@ try {
 
 // Initialize Firestore
 const db = getFirestore(app);
+
+// Note: If you're using Firestore emulator in development, uncomment the following:
+// if (__DEV__ && !db._delegate._terminated) {
+//   try {
+//     connectFirestoreEmulator(db, 'localhost', 8080);
+//   } catch (error) {
+//     console.log('Firestore emulator already connected');
+//   }
+// }
 
 export { auth, db };
 export default app;

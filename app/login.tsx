@@ -6,13 +6,14 @@ import { FirebaseError } from 'firebase/app';
 
 const Login: React.FC = () => {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const getFirebaseErrorMessage = (error: FirebaseError) => {
+    console.log('Firebase error code:', error.code);
     switch (error.code) {
       case 'auth/user-not-found':
         return 'No account found with this email address.';
@@ -27,9 +28,14 @@ const Login: React.FC = () => {
       case 'auth/network-request-failed':
         return 'Network error. Please check your internet connection.';
       case 'auth/invalid-credential':
-        return 'Invalid email or password. Please check your credentials.';
+        return 'Invalid email or password. Please check your credentials and try again.';
+      case 'auth/missing-password':
+        return 'Please enter your password.';
+      case 'auth/weak-password':
+        return 'Password should be at least 6 characters.';
       default:
-        return 'An error occurred during login. Please try again.';
+        console.log('Unknown error:', error.message);
+        return `Authentication error: ${error.message}`;
     }
   };
 
@@ -42,7 +48,7 @@ const Login: React.FC = () => {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       Alert.alert('Validation Error', 'Please enter a valid email address.');
       return;
     }
@@ -55,15 +61,22 @@ const Login: React.FC = () => {
     setIsLoading(true);
     
     try {
-      await login(email.trim(), password);
-      console.log('Login successful');
-      router.replace('/(tabs)');
+      console.log('Starting login process...');
+      await login(email.trim().toLowerCase(), password);
+      console.log('Login completed successfully');
+      
+      // Small delay to ensure auth state is updated
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 500);
       
     } catch (error) {
       console.error('Login error:', error);
       
       if (error instanceof FirebaseError) {
         Alert.alert('Login Failed', getFirebaseErrorMessage(error));
+      } else if (error instanceof Error) {
+        Alert.alert('Login Error', error.message);
       } else {
         Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
       }
@@ -73,12 +86,24 @@ const Login: React.FC = () => {
   };
 
   const handleSignUp = () => {
-    router.push('/signup'); 
+    if (!isLoading && !authLoading) {
+      router.push('/signup'); 
+    }
   };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
+
+  // Show loading if auth is still initializing
+  if (authLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text className="mt-4 text-gray-600">Initializing...</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 justify-center items-center bg-white p-5">
@@ -149,7 +174,7 @@ const Login: React.FC = () => {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity className="mt-4">
+      <TouchableOpacity className="mt-4" disabled={isLoading}>
         <Text className="text-blue-500 font-semibold">
           Forgot Password?
         </Text>
@@ -157,7 +182,7 @@ const Login: React.FC = () => {
 
       <View className="flex-row mt-6">
         <Text className="text-gray-600">New User? </Text>
-        <TouchableOpacity onPress={handleSignUp} disabled={isLoading}>
+        <TouchableOpacity onPress={handleSignUp} disabled={isLoading || authLoading}>
           <Text className="text-blue-500 font-semibold">Sign Up</Text>
         </TouchableOpacity>
       </View>

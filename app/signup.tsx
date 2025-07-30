@@ -7,7 +7,7 @@ import { FirebaseError } from 'firebase/app';
 
 const SignUp: React.FC = () => {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, loading: authLoading } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -46,6 +46,7 @@ const SignUp: React.FC = () => {
   ];
 
   const getFirebaseErrorMessage = (error: FirebaseError) => {
+    console.log('Firebase error code:', error.code);
     switch (error.code) {
       case 'auth/email-already-in-use':
         return 'An account with this email already exists.';
@@ -55,8 +56,13 @@ const SignUp: React.FC = () => {
         return 'Password should be at least 6 characters long.';
       case 'auth/network-request-failed':
         return 'Network error. Please check your internet connection.';
+      case 'auth/operation-not-allowed':
+        return 'Email/password accounts are not enabled.';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please try again later.';
       default:
-        return 'An error occurred during registration. Please try again.';
+        console.log('Unknown error:', error.message);
+        return `Registration error: ${error.message}`;
     }
   };
 
@@ -134,7 +140,7 @@ const SignUp: React.FC = () => {
 
     // Email validation regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       Alert.alert('Validation Error', 'Please enter a valid email address.');
       return;
     }
@@ -166,9 +172,10 @@ const SignUp: React.FC = () => {
     setIsLoading(true);
     
     try {
+      console.log('Starting registration process...');
       await register({
         name: name.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         username: username.trim(),
         age: ageNum,
         gender,
@@ -177,11 +184,21 @@ const SignUp: React.FC = () => {
         password
       });
       
+      console.log('Registration completed successfully');
+      
       Alert.alert(
         'Success',
         'Account created successfully! You are now logged in.',
         [
-          { text: 'OK', onPress: () => router.replace('/(tabs)') }
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Small delay to ensure auth state is updated
+              setTimeout(() => {
+                router.replace('/(tabs)');
+              }, 500);
+            }
+          }
         ]
       );
       
@@ -190,6 +207,8 @@ const SignUp: React.FC = () => {
       
       if (error instanceof FirebaseError) {
         Alert.alert('Registration Failed', getFirebaseErrorMessage(error));
+      } else if (error instanceof Error) {
+        Alert.alert('Registration Error', error.message);
       } else {
         Alert.alert('Registration Error', 'An unexpected error occurred. Please try again.');
       }
@@ -199,7 +218,7 @@ const SignUp: React.FC = () => {
   };
 
   const handleGoToLogin = () => {
-    if (!isLoading) {
+    if (!isLoading && !authLoading) {
       router.replace('/login');
     }
   };
@@ -262,6 +281,16 @@ const SignUp: React.FC = () => {
       </Animated.View>
     );
   };
+
+  // Show loading if auth is still initializing
+  if (authLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Text className="mt-4 text-gray-600">Initializing...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -418,17 +447,30 @@ const SignUp: React.FC = () => {
 
           <TouchableOpacity 
             className="w-full px-10 py-4 rounded-full shadow-lg active:opacity-80"
-            style={{ backgroundColor: '#4A90E2' }}
+            style={{ 
+              backgroundColor: isLoading ? '#9CA3AF' : '#4A90E2',
+              opacity: isLoading ? 0.7 : 1 
+            }}
             onPress={handleSignUp}
+            disabled={isLoading}
           >
-            <Text className="text-white text-lg font-semibold text-center">
-              Sign Up
-            </Text>
+            {isLoading ? (
+              <View className="flex-row justify-center items-center">
+                <ActivityIndicator color="white" size="small" className="mr-2" />
+                <Text className="text-white text-lg font-semibold">
+                  Creating Account...
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-white text-lg font-semibold text-center">
+                Sign Up
+              </Text>
+            )}
           </TouchableOpacity>
 
           <View className="flex-row mt-8">
             <Text className="text-gray-600">Already have an account? </Text>
-            <TouchableOpacity onPress={handleGoToLogin}>
+            <TouchableOpacity onPress={handleGoToLogin} disabled={isLoading || authLoading}>
               <Text className="text-blue-500 font-semibold">Login</Text>
             </TouchableOpacity>
           </View>
