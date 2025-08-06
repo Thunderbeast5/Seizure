@@ -72,10 +72,21 @@ export const useProfile = () => {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
-      Alert.alert('Error', 'Failed to load profile. Please try again.');
-      // Fallback to default profile
-      const defaultProfile = initializeDefaultProfile();
-      setProfile(defaultProfile);
+      
+      try {
+        // Try to create and save a default profile if loading failed
+        console.log('Creating default profile after load error...');
+        const defaultProfile = initializeDefaultProfile();
+        await profileService.saveUserProfile(user.uid, defaultProfile);
+        setProfile(defaultProfile);
+        console.log('Default profile created successfully');
+      } catch (createError) {
+        console.error('Error creating default profile:', createError);
+        Alert.alert('Error', 'Failed to create profile. Please try again.');
+        // Only set local profile as last resort
+        const defaultProfile = initializeDefaultProfile();
+        setProfile(defaultProfile);
+      }
     } finally {
       setLoading(false);
     }

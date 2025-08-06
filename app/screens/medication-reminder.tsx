@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMedications } from '../../hooks/useMedications';
-import { CreateMedicationData } from '../../services/medicationService';
+import { CreateMedicationData, Medication } from '../../services/medicationService';
 
 export default function MedicationsScreen() {
   const navigation = useNavigation();
@@ -23,20 +23,23 @@ export default function MedicationsScreen() {
     medications, 
     loading, 
     addMedication, 
+    updateMedication,
     deleteMedication, 
-    toggleMedicationStatus 
+    toggleMedicationStatus,
+    loadMedications
   } = useMedications();
   const [saving, setSaving] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<string | null>(null);
   
-  // Form state for adding new medication
+  // Form state for adding/editing medication
   const [medName, setMedName] = useState('');
   const [dosage, setDosage] = useState('');
   const [frequency, setFrequency] = useState('');
   const [times, setTimes] = useState(['08:00']);
   const [notes, setNotes] = useState('');
 
-  const handleAddMedication = async () => {
+  const handleSaveMedication = async () => {
     if (!user?.uid) {
       Alert.alert('Error', 'Please log in to add medications');
       return;
@@ -54,7 +57,23 @@ export default function MedicationsScreen() {
 
     try {
       setSaving(true);
-              const medicationData: CreateMedicationData = {
+      
+      if (editingMedication) {
+        // Update existing medication
+        const medicationData = {
+          name: medName.trim(),
+          dosage: dosage.trim(),
+          frequency: frequency.trim(),
+          time: times.filter(time => time.trim() !== ''),
+          notes: notes.trim() || null,
+        };
+
+        console.log('Updating medication:', editingMedication, medicationData);
+        await updateMedication(editingMedication, medicationData);
+        Alert.alert('Success', 'Medication updated successfully!');
+      } else {
+        // Add new medication
+        const medicationData: CreateMedicationData = {
           name: medName.trim(),
           dosage: dosage.trim(),
           frequency: frequency.trim(),
@@ -63,15 +82,17 @@ export default function MedicationsScreen() {
           active: true,
         };
 
-      console.log('Adding medication for user:', user.uid, medicationData);
-      await addMedication(medicationData);
+        console.log('Adding medication for user:', user.uid, medicationData);
+        await addMedication(medicationData);
+        Alert.alert('Success', 'Medication added successfully!');
+      }
       
       resetForm();
       setShowAddForm(false);
-      Alert.alert('Success', 'Medication added successfully!');
+      setEditingMedication(null);
     } catch (error) {
-      console.error('Error adding medication:', error);
-      Alert.alert('Error', 'Failed to add medication. Please try again.');
+      console.error('Error saving medication:', error);
+      Alert.alert('Error', 'Failed to save medication. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -111,12 +132,23 @@ export default function MedicationsScreen() {
     );
   };
 
+  const handleEditMedication = (medication: Medication) => {
+    setEditingMedication(medication.id || '');
+    setMedName(medication.name);
+    setDosage(medication.dosage);
+    setFrequency(medication.frequency);
+    setTimes(medication.time || ['08:00']);
+    setNotes(medication.notes || '');
+    setShowAddForm(true);
+  };
+
   const resetForm = () => {
     setMedName('');
     setDosage('');
     setFrequency('');
     setTimes(['08:00']);
     setNotes('');
+    setEditingMedication(null);
   };
 
   const addTimeSlot = () => {
@@ -252,7 +284,10 @@ export default function MedicationsScreen() {
             </View>
             
             <View className="flex-row border-t border-gray-100 pt-4">
-              <TouchableOpacity className="flex-row items-center mr-8">
+              <TouchableOpacity 
+                className="flex-row items-center mr-8"
+                onPress={() => handleEditMedication(med)}
+              >
                 <Ionicons name="create-outline" size={24} color="#4A90E2" />
                 <Text className="text-lg text-blue-600 ml-2">Edit</Text>
               </TouchableOpacity>
@@ -288,6 +323,12 @@ export default function MedicationsScreen() {
 
   const renderAddForm = () => (
     <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
+      <View className="mb-6">
+        <Text className="text-2xl font-bold text-slate-800 mb-4 text-center">
+          {editingMedication ? 'Edit Medication' : 'Add New Medication'}
+        </Text>
+      </View>
+      
       <View className="mb-6">
         <Text className="text-xl font-medium text-slate-800 mb-3">Medication Name*</Text>
         <View className="bg-white rounded-xl p-5 shadow-sm">
@@ -388,13 +429,15 @@ export default function MedicationsScreen() {
         
         <TouchableOpacity 
           className={`rounded-xl p-5 flex-1 items-center ml-3 ${saving ? 'bg-gray-400' : 'bg-green-600'}`}
-          onPress={handleAddMedication}
+          onPress={handleSaveMedication}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Text className="text-white text-xl font-medium">Save Medication</Text>
+            <Text className="text-white text-xl font-medium">
+              {editingMedication ? 'Update Medication' : 'Save Medication'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -415,7 +458,7 @@ export default function MedicationsScreen() {
           className="p-2"
           onPress={() => {
             if (user?.uid) {
-              loadUserMedications();
+              loadMedications();
             }
           }}
         >

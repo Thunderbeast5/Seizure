@@ -157,13 +157,38 @@ class ProfileService {
   async updateChildInfo(userId: string, childInfo: Partial<ChildInfo>): Promise<void> {
     try {
       const profileRef = doc(db, this.collectionName, userId);
+      
+      // Get current profile to merge with new data
+      let currentProfile = await this.getUserProfile(userId);
+      if (!currentProfile) {
+        console.log('Profile not found, creating default profile first...');
+        // Create a minimal default profile structure
+        const defaultProfile = {
+          userId,
+          child: { name: '', age: 0, birthDate: '', gender: '', weight: '', height: '', bloodType: '', allergies: '', photo: '' },
+          diagnosis: { type: '', diagnosisDate: '', diagnosedBy: '', notes: '' },
+          caregivers: [],
+          emergencyContacts: [],
+          settings: { notifications: true, dataSharing: true, locationTracking: true, darkMode: false, autoBackup: true },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        await setDoc(profileRef, defaultProfile);
+        currentProfile = defaultProfile as any;
+      }
+
+      const updatedChild = {
+        ...currentProfile.child,
+        ...childInfo
+      };
+
       const updateData = {
-        'child': childInfo,
+        'child': updatedChild,
         updatedAt: serverTimestamp()
       };
 
       console.log('Updating child info for user:', userId, updateData);
-      await updateDoc(profileRef, updateData);
+      await setDoc(profileRef, updateData, { merge: true });
       console.log('Child info updated successfully');
     } catch (error) {
       console.error('Error updating child info:', error);
@@ -175,13 +200,38 @@ class ProfileService {
   async updateDiagnosisInfo(userId: string, diagnosisInfo: Partial<DiagnosisInfo>): Promise<void> {
     try {
       const profileRef = doc(db, this.collectionName, userId);
+      
+      // Get current profile to merge with new data
+      let currentProfile = await this.getUserProfile(userId);
+      if (!currentProfile) {
+        console.log('Profile not found, creating default profile first...');
+        // Create a minimal default profile structure
+        const defaultProfile = {
+          userId,
+          child: { name: '', age: 0, birthDate: '', gender: '', weight: '', height: '', bloodType: '', allergies: '', photo: '' },
+          diagnosis: { type: '', diagnosisDate: '', diagnosedBy: '', notes: '' },
+          caregivers: [],
+          emergencyContacts: [],
+          settings: { notifications: true, dataSharing: true, locationTracking: true, darkMode: false, autoBackup: true },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        await setDoc(profileRef, defaultProfile);
+        currentProfile = defaultProfile as any;
+      }
+
+      const updatedDiagnosis = {
+        ...currentProfile.diagnosis,
+        ...diagnosisInfo
+      };
+
       const updateData = {
-        'diagnosis': diagnosisInfo,
+        'diagnosis': updatedDiagnosis,
         updatedAt: serverTimestamp()
       };
 
       console.log('Updating diagnosis info for user:', userId, updateData);
-      await updateDoc(profileRef, updateData);
+      await setDoc(profileRef, updateData, { merge: true });
       console.log('Diagnosis info updated successfully');
     } catch (error) {
       console.error('Error updating diagnosis info:', error);
@@ -199,13 +249,32 @@ class ProfileService {
         ...caregiver
       };
 
+      // Get current profile or create default if doesn't exist
+      let currentProfile = await this.getUserProfile(userId);
+      if (!currentProfile) {
+        console.log('Profile not found, creating default profile first...');
+        // Create a minimal default profile structure
+        const defaultProfile = {
+          userId,
+          child: { name: '', age: 0, birthDate: '', gender: '', weight: '', height: '', bloodType: '', allergies: '', photo: '' },
+          diagnosis: { type: '', diagnosisDate: '', diagnosedBy: '', notes: '' },
+          caregivers: [],
+          emergencyContacts: [],
+          settings: { notifications: true, dataSharing: true, locationTracking: true, darkMode: false, autoBackup: true },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        await setDoc(profileRef, defaultProfile);
+        currentProfile = defaultProfile as any;
+      }
+
       const updateData = {
-        caregivers: [...(await this.getUserProfile(userId))?.caregivers || [], newCaregiver],
+        caregivers: [...(currentProfile.caregivers || []), newCaregiver],
         updatedAt: serverTimestamp()
       };
 
       console.log('Adding caregiver for user:', userId, newCaregiver);
-      await updateDoc(profileRef, updateData);
+      await setDoc(profileRef, updateData, { merge: true });
       console.log('Caregiver added successfully');
       return caregiverId;
     } catch (error) {
