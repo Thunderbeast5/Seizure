@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView,
+import FloatingChatbot from '@/components/FloatingChatbot';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
   Image,
   TextInput,
-  Switch,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Switch,
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { useProfile } from '../../hooks/useProfile';
-import { ChildInfo, DiagnosisInfo, Caregiver, EmergencyContact } from '../../services/profileService';
+import { useNavigation } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { doc, onSnapshot, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase.config';
 
 interface ProfileData {
   child: {
@@ -62,37 +65,172 @@ interface ProfileData {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, userData, logout } = useAuth();
-  const { 
-    profile, 
-    loading, 
-    saving,
-    updateChildInfo, 
-    updateDiagnosisInfo,
-    addCaregiver,
-    deleteCaregiver,
-    addEmergencyContact,
-    deleteEmergencyContact,
-    updateSettings
-  } = useProfile();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [activeSection, setActiveSection] = useState('child');
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<any>({});
 
-  // Debug info - remove in production
+  // Initialize default profile structure
+  const initializeDefaultProfile = (): ProfileData => {
+    return {
+      child: {
+        name: userData?.name || user?.displayName || '',
+        age: userData?.age || 0,
+        birthDate: '',
+        gender: userData?.gender || '',
+        weight: '',
+        height: '',
+        bloodType: userData?.bloodGroup || '',
+        allergies: '',
+        photo: `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || user?.displayName || 'User'}`
+      },
+      diagnosis: {
+        type: userData?.seizureType || '',
+        diagnosisDate: '',
+        diagnosedBy: '',
+        notes: ''
+      },
+      caregivers: [],
+      emergencyContacts: [],
+      settings: {
+        notifications: true,
+        dataSharing: true,
+        locationTracking: true,
+        darkMode: false,
+        autoBackup: true
+      }
+    };
+  };
+
   useEffect(() => {
-    if (__DEV__ && profile) {
-      console.log('Current profile data:', profile);
-    }
-  }, [profile]);
+    let unsubscribe: () => void;
+
+    const setupProfileListener = async () => {
+      if (!user) {
+        setLoading(false);
+        setError('No authenticated user found');
+        return;
+      }
+
+      console.log('Setting up profile listener for user:', user.uid);
+      console.log('Current userData:', userData);
+      setError(null);
+
+      try {
+        // First, try to get userData if it's not loaded yet
+        let currentUserData = userData;
+        if (!currentUserData) {
+          console.log('UserData not loaded, fetching from Firestore...');
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              currentUserData = userDoc.data() as any;
+              console.log('UserData fetched:', currentUserData);
+            }
+          } catch (userError) {
+            console.log('Could not fetch userData:', userError);
+          }
+        }
+
+        // Listen to profile changes
+        unsubscribe = onSnapshot(
+          doc(db, 'profiles', user.uid),
+          async (profileDoc) => {
+            console.log('Profile document updated:', profileDoc.exists());
+            
+            if (profileDoc.exists()) {
+              const data = profileDoc.data() as ProfileData;
+              console.log('Profile data loaded from Firestore:', data);
+              setProfile(data);
+            } else {
+              console.log('No profile document found, creating default profile');
+              
+              // Create default profile with available data
+              const defaultProfile = {
+                child: {
+                  name: currentUserData?.name || user?.displayName || '',
+                  age: currentUserData?.age || 0,
+                  birthDate: '',
+                  gender: currentUserData?.gender || '',
+                  weight: '',
+                  height: '',
+                  bloodType: currentUserData?.bloodGroup || '',
+                  allergies: '',
+                  photo: `https://api.dicebear.com/7.x/initials/svg?seed=${currentUserData?.name || user?.displayName || 'User'}`
+                },
+                diagnosis: {
+                  type: currentUserData?.seizureType || '',
+                  diagnosisDate: '',
+                  diagnosedBy: '',
+                  notes: ''
+                },
+                caregivers: [],
+                emergencyContacts: [],
+                settings: {
+                  notifications: true,
+                  dataSharing: true,
+                  locationTracking: true,
+                  darkMode: false,
+                  autoBackup: true
+                }
+              };
+              
+              try {
+                // Save the default profile to Firestore
+                await setDoc(doc(db, 'profiles', user.uid), defaultProfile);
+                console.log('Default profile saved to Firestore');
+                setProfile(defaultProfile);
+              } catch (createError) {
+                console.error('Error creating default profile:', createError);
+                // Still set the profile locally even if Firestore write fails
+                setProfile(defaultProfile);
+              }
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Error listening to profile:', error);
+            setError('Failed to load profile data');
+            // Fallback to default profile
+            const defaultProfile = initializeDefaultProfile();
+            setProfile(defaultProfile);
+            setLoading(false);
+          }
+        );
+      } catch (error) {
+        console.error('Error setting up profile listener:', error);
+        setError('Failed to initialize profile');
+        setLoading(false);
+      }
+    };
+
+    setupProfileListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [user]); // Remove userData dependency to avoid infinite loops
 
   const handleToggleSetting = async (setting: keyof ProfileData['settings']) => {
-    if (!profile) return;
+    if (!user || !profile) return;
+
+    const updatedSettings = {
+      ...profile.settings,
+      [setting]: !profile.settings[setting]
+    };
+
+    const updatedProfile = {
+      ...profile,
+      settings: updatedSettings
+    };
 
     try {
-      const updatedSettings = {
-        [setting]: !profile.settings[setting]
-      };
-      await updateSettings(updatedSettings);
+      await updateDoc(doc(db, 'profiles', user.uid), updatedProfile);
+      setProfile(updatedProfile);
     } catch (error) {
       console.error('Error updating setting:', error);
       Alert.alert('Error', 'Failed to update setting. Please try again.');
@@ -105,11 +243,18 @@ export default function ProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    if (!profile) return;
+    if (!user || !profile) return;
 
     try {
-      await updateChildInfo(editingData);
+      const updatedProfile = {
+        ...profile,
+        child: { ...editingData }
+      };
+
+      await updateDoc(doc(db, 'profiles', user.uid), updatedProfile);
+      setProfile(updatedProfile);
       setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -158,10 +303,10 @@ export default function ProfileScreen() {
                 placeholder="Full Name"
               />
             ) : (
-              <Text className="text-2xl font-bold text-slate-800 mb-1">{profile.child.name}</Text>
+              <Text className="text-2xl font-bold text-slate-800 mb-1">{profile.child.name || 'No name set'}</Text>
             )}
             <Text className="text-base text-slate-600">{profile.child.age} years old</Text>
-            <Text className="text-base text-slate-600">{profile.child.gender}</Text>
+            <Text className="text-base text-slate-600">{profile.child.gender || 'Gender not specified'}</Text>
           </View>
         </View>
         
@@ -182,17 +327,19 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </View>
-            <View className="flex-1">
+            <View className="flex-1 ml-4">
               <Text className="text-sm text-slate-600 mb-1">Blood Type</Text>
               {isEditing ? (
                 <TextInput
                   className="text-base text-slate-800 font-medium border-b border-gray-300 pb-1"
                   value={editingData.bloodType}
                   onChangeText={(text) => setEditingData({...editingData, bloodType: text})}
-                  placeholder="A+, B+, etc."
+                  placeholder="O+"
                 />
               ) : (
-                <Text className="text-base text-slate-800 font-medium">{profile.child.bloodType}</Text>
+                <Text className="text-base text-slate-800 font-medium">
+                  {profile.child.bloodType || 'Not specified'}
+                </Text>
               )}
             </View>
           </View>
@@ -205,7 +352,7 @@ export default function ProfileScreen() {
                   className="text-base text-slate-800 font-medium border-b border-gray-300 pb-1"
                   value={editingData.weight}
                   onChangeText={(text) => setEditingData({...editingData, weight: text})}
-                  placeholder="26 kg"
+                  placeholder="kg"
                 />
               ) : (
                 <Text className="text-base text-slate-800 font-medium">
@@ -213,14 +360,14 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </View>
-            <View className="flex-1">
+            <View className="flex-1 ml-4">
               <Text className="text-sm text-slate-600 mb-1">Height</Text>
               {isEditing ? (
                 <TextInput
                   className="text-base text-slate-800 font-medium border-b border-gray-300 pb-1"
                   value={editingData.height}
                   onChangeText={(text) => setEditingData({...editingData, height: text})}
-                  placeholder="128 cm"
+                  placeholder="cm"
                 />
               ) : (
                 <Text className="text-base text-slate-800 font-medium">
@@ -253,20 +400,14 @@ export default function ProfileScreen() {
         {isEditing ? (
           <View className="flex-row space-x-3">
             <TouchableOpacity 
-              className={`flex-1 rounded-lg p-4 items-center mr-2 ${saving ? 'bg-gray-400' : 'bg-green-500'}`}
+              className="flex-1 bg-green-500 rounded-lg p-4 items-center mr-2"
               onPress={handleSaveProfile}
-              disabled={saving}
             >
-              {saving ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text className="text-white text-base font-medium">Save Changes</Text>
-              )}
+              <Text className="text-white text-base font-medium">Save Changes</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               className="flex-1 bg-gray-500 rounded-lg p-4 items-center ml-2"
               onPress={() => setIsEditing(false)}
-              disabled={saving}
             >
               <Text className="text-white text-base font-medium">Cancel</Text>
             </TouchableOpacity>
@@ -369,23 +510,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity className="p-2">
                   <Ionicons name="create-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  className="p-2"
-                  onPress={() => {
-                    Alert.alert(
-                      'Delete Caregiver',
-                      `Are you sure you want to delete ${caregiver.name}?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: () => deleteCaregiver(caregiver.id)
-                        }
-                      ]
-                    );
-                  }}
-                >
+                <TouchableOpacity className="p-2">
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
@@ -429,23 +554,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity className="p-2">
                   <Ionicons name="create-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  className="p-2"
-                  onPress={() => {
-                    Alert.alert(
-                      'Delete Emergency Contact',
-                      `Are you sure you want to delete ${contact.name}?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: () => deleteEmergencyContact(contact.id)
-                        }
-                      ]
-                    );
-                  }}
-                >
+                <TouchableOpacity className="p-2">
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
@@ -459,7 +568,7 @@ export default function ProfileScreen() {
           </View>
         )}
         
-        <TouchableOpacity className="bg-blue-500 rounded-lg p-4 flex-row items-center justify-center mt-2">
+        <TouchableOpacity className="bg-red-500 rounded-lg p-4 flex-row items-center justify-center mt-2">
           <Ionicons name="add-circle" size={20} color="white" />
           <Text className="text-white text-base font-medium ml-2">Add Emergency Contact</Text>
         </TouchableOpacity>
@@ -472,11 +581,14 @@ export default function ProfileScreen() {
 
     return (
       <View className="mb-6">
+        {/* Privacy & Data Section */}
         <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+          <Text className="text-lg font-bold text-slate-800 mb-4">Privacy & Data</Text>
+          
           <View className="flex-row items-center justify-between py-3 border-b border-gray-100">
             <View className="flex-1">
               <Text className="text-base font-medium text-slate-800 mb-1">Notifications</Text>
-              <Text className="text-sm text-slate-600">Receive alerts and reminders</Text>
+              <Text className="text-sm text-slate-600">Receive app notifications</Text>
             </View>
             <Switch
               value={profile.settings.notifications}
@@ -489,7 +601,7 @@ export default function ProfileScreen() {
           <View className="flex-row items-center justify-between py-3 border-b border-gray-100">
             <View className="flex-1">
               <Text className="text-base font-medium text-slate-800 mb-1">Data Sharing</Text>
-              <Text className="text-sm text-slate-600">Share data with healthcare providers</Text>
+              <Text className="text-sm text-slate-600">Share anonymized data for research</Text>
             </View>
             <Switch
               value={profile.settings.dataSharing}
@@ -502,7 +614,7 @@ export default function ProfileScreen() {
           <View className="flex-row items-center justify-between py-3 border-b border-gray-100">
             <View className="flex-1">
               <Text className="text-base font-medium text-slate-800 mb-1">Location Tracking</Text>
-              <Text className="text-sm text-slate-600">Enable location for emergency alerts</Text>
+              <Text className="text-sm text-slate-600">Allow location-based features</Text>
             </View>
             <Switch
               value={profile.settings.locationTracking}
@@ -545,12 +657,12 @@ export default function ProfileScreen() {
           
           <View className="mb-3">
             <Text className="text-sm text-slate-600 mb-1">Email</Text>
-            <Text className="text-base text-slate-800 font-medium">{userData?.email}</Text>
+            <Text className="text-base text-slate-800 font-medium">{userData?.email || user?.email || 'No email'}</Text>
           </View>
           
           <View className="mb-3">
             <Text className="text-sm text-slate-600 mb-1">Username</Text>
-            <Text className="text-base text-slate-800 font-medium">{userData?.username}</Text>
+            <Text className="text-base text-slate-800 font-medium">{userData?.username || 'No username'}</Text>
           </View>
           
           <View className="mb-3">
@@ -573,7 +685,7 @@ export default function ProfileScreen() {
   };
 
   // Show loading state
-  if (loading || !userData) {
+  if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-blue-50">
         <View className="flex-1 justify-center items-center">
@@ -584,16 +696,50 @@ export default function ProfileScreen() {
     );
   }
 
-  // Show authentication required message
+  // Show error state
+  if (error) {
+    return (
+      <SafeAreaView className="flex-1 bg-blue-50">
+        <View className="flex-1 justify-center items-center px-6">
+          <Ionicons name="alert-circle" size={64} color="#EF4444" />
+          <Text className="mt-4 text-slate-800 text-lg font-semibold text-center">
+            Profile Loading Error
+          </Text>
+          <Text className="mt-2 text-slate-600 text-center">
+            {error}
+          </Text>
+          <TouchableOpacity 
+            className="mt-6 bg-blue-500 rounded-lg px-6 py-3"
+            onPress={() => {
+              setError(null);
+              setLoading(true);
+            }}
+          >
+            <Text className="text-white font-medium">Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show message if no user but not loading
   if (!user) {
     return (
       <SafeAreaView className="flex-1 bg-blue-50">
-        <View className="flex-1 justify-center items-center p-6">
-          <Ionicons name="lock-closed" size={64} color="#E74C3C" />
-          <Text className="text-xl font-bold text-slate-800 mt-4 mb-2">Authentication Required</Text>
-          <Text className="text-lg text-gray-600 text-center">
-            Please log in to view and manage your profile.
+        <View className="flex-1 justify-center items-center px-6">
+          <Ionicons name="person-circle" size={64} color="#9CA3AF" />
+          <Text className="mt-4 text-slate-800 text-lg font-semibold text-center">
+            Please Sign In
           </Text>
+          <Text className="mt-2 text-slate-600 text-center">
+            You need to be signed in to view your profile
+          </Text>
+          <TouchableOpacity 
+            className="mt-6 bg-blue-500 rounded-lg px-6 py-3"
+            onPress={() => router.push('/login')}
+          >
+            <Text className="text-white font-medium">Go to Login</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -650,7 +796,7 @@ export default function ProfileScreen() {
             <Text className={`text-base font-medium ml-2 ${
               activeSection === 'diagnosis' ? 'text-blue-500 font-bold' : 'text-slate-500'
             }`}>
-              Medical
+              Diagnosis
             </Text>
           </TouchableOpacity>
           
@@ -710,31 +856,14 @@ export default function ProfileScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView className="flex-1 p-4 mb-20" style={{ overflow: 'hidden' }}>
-        {/* Debug info - remove in production */}
-        {__DEV__ && (
-          <View className="bg-blue-100 p-3 rounded-lg mb-4">
-            <Text className="text-sm text-blue-800">
-              User ID: {user?.uid || 'Not logged in'}
-            </Text>
-            <Text className="text-sm text-blue-800">
-              Profile loaded: {profile ? 'Yes' : 'No'}
-            </Text>
-            <Text className="text-sm text-blue-800">
-              Caregivers: {profile?.caregivers?.length || 0}
-            </Text>
-            <Text className="text-sm text-blue-800">
-              Emergency Contacts: {profile?.emergencyContacts?.length || 0}
-            </Text>
-          </View>
-        )}
-
+      <ScrollView className="flex-1 p-4">
         {activeSection === 'child' && renderChildSection()}
         {activeSection === 'diagnosis' && renderDiagnosisSection()}
         {activeSection === 'caregivers' && renderCaregiversSection()}
         {activeSection === 'emergency' && renderEmergencyContactsSection()}
         {activeSection === 'settings' && renderSettingsSection()}
       </ScrollView>
+     
     </SafeAreaView>
   );
 }

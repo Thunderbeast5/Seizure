@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { LanguageSelector } from '../../components/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
+import FloatingChatbot from '@/components/FloatingChatbot';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -792,6 +793,12 @@ export default function HomeScreen() {
         visible={isLanguageSelectorVisible}
         onClose={() => setIsLanguageSelectorVisible(false)}
       />
+
+     <FloatingChatbot 
+  apiEndpoint="YOUR_API_ENDPOINT_HERE"
+  position={{ bottom: 155, right: 20 }}
+  chatPosition="center"
+/>
     </SafeAreaView>
   );
 }
