@@ -15,8 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase.config';
+import { useProfile } from '../../hooks/useProfile';
+import { ChildInfo, DiagnosisInfo, Caregiver, EmergencyContact } from '../../services/profileService';
 
 interface ProfileData {
   child: {
@@ -62,97 +62,37 @@ interface ProfileData {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, userData, logout } = useAuth();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const { 
+    profile, 
+    loading, 
+    saving,
+    updateChildInfo, 
+    updateDiagnosisInfo,
+    addCaregiver,
+    deleteCaregiver,
+    addEmergencyContact,
+    deleteEmergencyContact,
+    updateSettings
+  } = useProfile();
   const [activeSection, setActiveSection] = useState('child');
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [editingData, setEditingData] = useState<any>({});
 
-  // Initialize default profile structure
-  const initializeDefaultProfile = () => {
-    return {
-      child: {
-        name: userData?.name || '',
-        age: userData?.age || 0,
-        birthDate: '',
-        gender: userData?.gender || '',
-        weight: '',
-        height: '',
-        bloodType: userData?.bloodGroup || '',
-        allergies: '',
-        photo: `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || 'User'}`
-      },
-      diagnosis: {
-        type: userData?.seizureType || '',
-        diagnosisDate: '',
-        diagnosedBy: '',
-        notes: ''
-      },
-      caregivers: [],
-      emergencyContacts: [],
-      settings: {
-        notifications: true,
-        dataSharing: true,
-        locationTracking: true,
-        darkMode: false,
-        autoBackup: true
-      }
-    };
-  };
-
+  // Debug info - remove in production
   useEffect(() => {
-    if (!user || !userData) {
-      setLoading(false);
-      return;
+    if (__DEV__ && profile) {
+      console.log('Current profile data:', profile);
     }
-
-    console.log('Setting up profile listener for user:', user.uid);
-
-    // Listen to profile changes
-    const unsubscribe = onSnapshot(
-      doc(db, 'profiles', user.uid),
-      (doc) => {
-        console.log('Profile document updated:', doc.exists());
-        if (doc.exists()) {
-          const data = doc.data() as ProfileData;
-          console.log('Profile data loaded:', data);
-          setProfile(data);
-        } else {
-          console.log('No profile document found, using default');
-          // Initialize with default profile using userData
-          const defaultProfile = initializeDefaultProfile();
-          setProfile(defaultProfile);
-        }
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error listening to profile:', error);
-        // Fallback to default profile
-        const defaultProfile = initializeDefaultProfile();
-        setProfile(defaultProfile);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user, userData]);
+  }, [profile]);
 
   const handleToggleSetting = async (setting: keyof ProfileData['settings']) => {
-    if (!user || !profile) return;
-
-    const updatedSettings = {
-      ...profile.settings,
-      [setting]: !profile.settings[setting]
-    };
-
-    const updatedProfile = {
-      ...profile,
-      settings: updatedSettings
-    };
+    if (!profile) return;
 
     try {
-      await updateDoc(doc(db, 'profiles', user.uid), updatedProfile);
-      setProfile(updatedProfile);
+      const updatedSettings = {
+        [setting]: !profile.settings[setting]
+      };
+      await updateSettings(updatedSettings);
     } catch (error) {
       console.error('Error updating setting:', error);
       Alert.alert('Error', 'Failed to update setting. Please try again.');
@@ -165,18 +105,11 @@ export default function ProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    if (!user || !profile) return;
+    if (!profile) return;
 
     try {
-      const updatedProfile = {
-        ...profile,
-        child: { ...editingData }
-      };
-
-      await updateDoc(doc(db, 'profiles', user.uid), updatedProfile);
-      setProfile(updatedProfile);
+      await updateChildInfo(editingData);
       setIsEditing(false);
-      Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -320,14 +253,20 @@ export default function ProfileScreen() {
         {isEditing ? (
           <View className="flex-row space-x-3">
             <TouchableOpacity 
-              className="flex-1 bg-green-500 rounded-lg p-4 items-center mr-2"
+              className={`flex-1 rounded-lg p-4 items-center mr-2 ${saving ? 'bg-gray-400' : 'bg-green-500'}`}
               onPress={handleSaveProfile}
+              disabled={saving}
             >
-              <Text className="text-white text-base font-medium">Save Changes</Text>
+              {saving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white text-base font-medium">Save Changes</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity 
               className="flex-1 bg-gray-500 rounded-lg p-4 items-center ml-2"
               onPress={() => setIsEditing(false)}
+              disabled={saving}
             >
               <Text className="text-white text-base font-medium">Cancel</Text>
             </TouchableOpacity>
@@ -430,7 +369,23 @@ export default function ProfileScreen() {
                 <TouchableOpacity className="p-2">
                   <Ionicons name="create-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity 
+                  className="p-2"
+                  onPress={() => {
+                    Alert.alert(
+                      'Delete Caregiver',
+                      `Are you sure you want to delete ${caregiver.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => deleteCaregiver(caregiver.id)
+                        }
+                      ]
+                    );
+                  }}
+                >
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
@@ -474,7 +429,23 @@ export default function ProfileScreen() {
                 <TouchableOpacity className="p-2">
                   <Ionicons name="create-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity 
+                  className="p-2"
+                  onPress={() => {
+                    Alert.alert(
+                      'Delete Emergency Contact',
+                      `Are you sure you want to delete ${contact.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => deleteEmergencyContact(contact.id)
+                        }
+                      ]
+                    );
+                  }}
+                >
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
@@ -613,6 +584,21 @@ export default function ProfileScreen() {
     );
   }
 
+  // Show authentication required message
+  if (!user) {
+    return (
+      <SafeAreaView className="flex-1 bg-blue-50">
+        <View className="flex-1 justify-center items-center p-6">
+          <Ionicons name="lock-closed" size={64} color="#E74C3C" />
+          <Text className="text-xl font-bold text-slate-800 mt-4 mb-2">Authentication Required</Text>
+          <Text className="text-lg text-gray-600 text-center">
+            Please log in to view and manage your profile.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-blue-50 overflow-hidden">
       <View className="flex-row items-center justify-between p-4 bg-blue-50">
@@ -725,6 +711,24 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView className="flex-1 p-4 mb-20" style={{ overflow: 'hidden' }}>
+        {/* Debug info - remove in production */}
+        {__DEV__ && (
+          <View className="bg-blue-100 p-3 rounded-lg mb-4">
+            <Text className="text-sm text-blue-800">
+              User ID: {user?.uid || 'Not logged in'}
+            </Text>
+            <Text className="text-sm text-blue-800">
+              Profile loaded: {profile ? 'Yes' : 'No'}
+            </Text>
+            <Text className="text-sm text-blue-800">
+              Caregivers: {profile?.caregivers?.length || 0}
+            </Text>
+            <Text className="text-sm text-blue-800">
+              Emergency Contacts: {profile?.emergencyContacts?.length || 0}
+            </Text>
+          </View>
+        )}
+
         {activeSection === 'child' && renderChildSection()}
         {activeSection === 'diagnosis' && renderDiagnosisSection()}
         {activeSection === 'caregivers' && renderCaregiversSection()}
