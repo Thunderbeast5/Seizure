@@ -439,6 +439,10 @@ const SignUp: React.FC = () => {
     
     try {
       console.log('Starting registration process...');
+      
+      // Convert age to number here
+      const ageNum = parseInt(age.trim());
+      
       await register({
         name: name.trim(),
         email: email.trim().toLowerCase(),
