@@ -15,7 +15,9 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { useProfile } from '../../hooks/useProfile';
+import { ChildInfo, DiagnosisInfo, Caregiver, EmergencyContact } from '../../services/profileService';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase.config';
 
 interface ProfileData {
@@ -62,97 +64,69 @@ interface ProfileData {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, userData, logout } = useAuth();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const { 
+    profile, 
+    loading, 
+    saving,
+    loadProfile,
+    updateChildInfo, 
+    updateDiagnosisInfo,
+    addCaregiver,
+    updateCaregiver,
+    deleteCaregiver,
+    addEmergencyContact,
+    deleteEmergencyContact,
+    updateSettings
+  } = useProfile();
   const [activeSection, setActiveSection] = useState('child');
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [editingData, setEditingData] = useState<any>({});
+  
+  // Caregiver management state
+  const [showAddCaregiverForm, setShowAddCaregiverForm] = useState(false);
+  const [editingCaregiver, setEditingCaregiver] = useState<string | null>(null);
+  const [caregiverFormData, setCaregiverFormData] = useState({
+    name: '',
+    relation: '',
+    phone: '',
+    email: '',
+    isPrimary: false
+  });
 
-  // Initialize default profile structure
-  const initializeDefaultProfile = () => {
-    return {
-      child: {
-        name: userData?.name || '',
-        age: userData?.age || 0,
-        birthDate: '',
-        gender: userData?.gender || '',
-        weight: '',
-        height: '',
-        bloodType: userData?.bloodGroup || '',
-        allergies: '',
-        photo: `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || 'User'}`
-      },
-      diagnosis: {
-        type: userData?.seizureType || '',
-        diagnosisDate: '',
-        diagnosedBy: '',
-        notes: ''
-      },
-      caregivers: [],
-      emergencyContacts: [],
-      settings: {
-        notifications: true,
-        dataSharing: true,
-        locationTracking: true,
-        darkMode: false,
-        autoBackup: true
-      }
-    };
-  };
+  // Diagnosis management state
+  const [isEditingDiagnosis, setIsEditingDiagnosis] = useState(false);
+  const [diagnosisFormData, setDiagnosisFormData] = useState({
+    type: '',
+    diagnosisDate: '',
+    diagnosedBy: '',
+    notes: ''
+  });
 
+  // Debug info - remove in production
   useEffect(() => {
-    if (!user || !userData) {
-      setLoading(false);
-      return;
-    }
-
-    console.log('Setting up profile listener for user:', user.uid);
-
-    // Listen to profile changes
-    const unsubscribe = onSnapshot(
-      doc(db, 'profiles', user.uid),
-      (doc) => {
-        console.log('Profile document updated:', doc.exists());
-        if (doc.exists()) {
-          const data = doc.data() as ProfileData;
-          console.log('Profile data loaded:', data);
-          setProfile(data);
-        } else {
-          console.log('No profile document found, using default');
-          // Initialize with default profile using userData
-          const defaultProfile = initializeDefaultProfile();
-          setProfile(defaultProfile);
-        }
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error listening to profile:', error);
-        // Fallback to default profile
-        const defaultProfile = initializeDefaultProfile();
-        setProfile(defaultProfile);
-        setLoading(false);
+    if (__DEV__) {
+      console.log('ProfileScreen Debug:', {
+        user: !!user,
+        userId: user?.uid,
+        userData: !!userData,
+        profile: !!profile,
+        loading,
+        saving
+      });
+      if (profile) {
+        console.log('Current profile data:', profile);
       }
-    );
-
-    return () => unsubscribe();
-  }, [user, userData]);
+    }
+  }, [user, userData, profile, loading, saving]);
 
   const handleToggleSetting = async (setting: keyof ProfileData['settings']) => {
-    if (!user || !profile) return;
-
-    const updatedSettings = {
-      ...profile.settings,
-      [setting]: !profile.settings[setting]
-    };
-
-    const updatedProfile = {
-      ...profile,
-      settings: updatedSettings
-    };
+    if (!profile) return;
 
     try {
-      await updateDoc(doc(db, 'profiles', user.uid), updatedProfile);
-      setProfile(updatedProfile);
+      const updatedSettings = {
+        [setting]: !profile.settings[setting]
+      };
+      await updateSettings(updatedSettings);
     } catch (error) {
       console.error('Error updating setting:', error);
       Alert.alert('Error', 'Failed to update setting. Please try again.');
@@ -165,21 +139,230 @@ export default function ProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    if (!user || !profile) return;
+    console.log('handleSaveProfile called with:', {
+      profile: !!profile,
+      editingData,
+      user: !!user,
+      userId: user?.uid
+    });
+
+    if (!profile) {
+      Alert.alert('Error', 'Profile not loaded. Please refresh and try again.');
+      return;
+    }
+
+    if (!user?.uid) {
+      Alert.alert('Authentication Error', 'User not authenticated. Please log in again.');
+      return;
+    }
 
     try {
-      const updatedProfile = {
-        ...profile,
-        child: { ...editingData }
-      };
-
-      await updateDoc(doc(db, 'profiles', user.uid), updatedProfile);
-      setProfile(updatedProfile);
+      console.log('Starting profile update...');
+      await updateChildInfo(editingData);
+      console.log('Profile updated successfully');
       setIsEditing(false);
-      Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      Alert.alert('Error', `Failed to update profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleRefreshProfile = async () => {
+    console.log('Refreshing profile...');
+    try {
+      await loadProfile();
+      console.log('Profile refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+      Alert.alert('Error', 'Failed to refresh profile. Please try again.');
+    }
+  };
+
+  const handleForceCreateProfile = async () => {
+    if (!user?.uid) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
+    Alert.alert(
+      'Create Profile',
+      'This will create a new profile document in Firebase. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Create',
+          onPress: async () => {
+            try {
+              console.log('Force creating profile document...');
+              const profileRef = doc(db, 'profiles', user.uid);
+              const defaultProfile = {
+                userId: user.uid,
+                child: {
+                  name: userData?.name || '',
+                  age: userData?.age || 0,
+                  birthDate: '',
+                  gender: userData?.gender || '',
+                  weight: '',
+                  height: '',
+                  bloodType: userData?.bloodGroup || '',
+                  allergies: '',
+                  photo: `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || 'User'}`
+                },
+                diagnosis: {
+                  type: userData?.seizureType || '',
+                  diagnosisDate: '',
+                  diagnosedBy: '',
+                  notes: ''
+                },
+                caregivers: [],
+                emergencyContacts: [],
+                settings: {
+                  notifications: true,
+                  dataSharing: true,
+                  locationTracking: true,
+                  darkMode: false,
+                  autoBackup: true
+                },
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              };
+              
+              await setDoc(profileRef, defaultProfile);
+              console.log('Profile document created successfully');
+              await loadProfile(); // Reload the profile
+              Alert.alert('Success', 'Profile created successfully!');
+            } catch (error) {
+              console.error('Error creating profile:', error);
+              Alert.alert('Error', `Failed to create profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleEditDiagnosis = () => {
+    if (!profile) return;
+    
+    setDiagnosisFormData({
+      type: profile.diagnosis.type || '',
+      diagnosisDate: profile.diagnosis.diagnosisDate || '',
+      diagnosedBy: profile.diagnosis.diagnosedBy || '',
+      notes: profile.diagnosis.notes || ''
+    });
+    setIsEditingDiagnosis(true);
+  };
+
+  const handleSaveDiagnosis = async () => {
+    console.log('handleSaveDiagnosis called with:', {
+      diagnosisFormData,
+      user: !!user,
+      userId: user?.uid
+    });
+
+    if (!user?.uid) {
+      Alert.alert('Authentication Error', 'User not authenticated. Please log in again.');
+      return;
+    }
+
+    try {
+      console.log('Starting diagnosis update...');
+      await updateDiagnosisInfo(diagnosisFormData);
+      console.log('Diagnosis updated successfully');
+      setIsEditingDiagnosis(false);
+    } catch (error) {
+      console.error('Error updating diagnosis:', error);
+      Alert.alert('Error', `Failed to update diagnosis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const resetDiagnosisForm = () => {
+    setDiagnosisFormData({
+      type: '',
+      diagnosisDate: '',
+      diagnosedBy: '',
+      notes: ''
+    });
+    setIsEditingDiagnosis(false);
+  };
+
+  const resetCaregiverForm = () => {
+    setCaregiverFormData({
+      name: '',
+      relation: '',
+      phone: '',
+      email: '',
+      isPrimary: false
+    });
+    setEditingCaregiver(null);
+    setShowAddCaregiverForm(false);
+  };
+
+  const handleAddCaregiver = () => {
+    resetCaregiverForm();
+    setShowAddCaregiverForm(true);
+  };
+
+  const handleEditCaregiver = (caregiver: any) => {
+    setCaregiverFormData({
+      name: caregiver.name,
+      relation: caregiver.relation,
+      phone: caregiver.phone,
+      email: caregiver.email,
+      isPrimary: caregiver.isPrimary
+    });
+    setEditingCaregiver(caregiver.id);
+    setShowAddCaregiverForm(true);
+  };
+
+  const handleSaveCaregiver = async () => {
+    console.log('handleSaveCaregiver called with:', {
+      caregiverFormData,
+      editingCaregiver,
+      user: !!user,
+      userId: user?.uid
+    });
+
+    if (!caregiverFormData.name.trim() || !caregiverFormData.relation.trim() || !caregiverFormData.phone.trim()) {
+      Alert.alert('Missing Information', 'Please fill in name, relation, and phone number');
+      return;
+    }
+
+    if (!user?.uid) {
+      Alert.alert('Authentication Error', 'User not authenticated. Please log in again.');
+      return;
+    }
+
+    try {
+      console.log('Starting caregiver save operation...');
+      
+      if (editingCaregiver) {
+        console.log('Updating caregiver:', editingCaregiver);
+        // Update existing caregiver
+        await updateCaregiver(editingCaregiver, {
+          name: caregiverFormData.name.trim(),
+          relation: caregiverFormData.relation.trim(),
+          phone: caregiverFormData.phone.trim(),
+          email: caregiverFormData.email.trim() || '',
+          isPrimary: caregiverFormData.isPrimary
+        });
+        console.log('Caregiver updated successfully');
+      } else {
+        console.log('Adding new caregiver');
+        // Add new caregiver
+        const caregiverId = await addCaregiver({
+          name: caregiverFormData.name.trim(),
+          relation: caregiverFormData.relation.trim(),
+          phone: caregiverFormData.phone.trim(),
+          email: caregiverFormData.email.trim() || '',
+          isPrimary: caregiverFormData.isPrimary
+        });
+        console.log('Caregiver added successfully with ID:', caregiverId);
+      }
+      resetCaregiverForm();
+    } catch (error) {
+      console.error('Error saving caregiver:', error);
+      Alert.alert('Error', `Failed to save caregiver: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -320,14 +503,20 @@ export default function ProfileScreen() {
         {isEditing ? (
           <View className="flex-row space-x-3">
             <TouchableOpacity 
-              className="flex-1 bg-green-500 rounded-lg p-4 items-center mr-2"
+              className={`flex-1 rounded-lg p-4 items-center mr-2 ${saving ? 'bg-gray-400' : 'bg-green-500'}`}
               onPress={handleSaveProfile}
+              disabled={saving}
             >
-              <Text className="text-white text-base font-medium">Save Changes</Text>
+              {saving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white text-base font-medium">Save Changes</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity 
               className="flex-1 bg-gray-500 rounded-lg p-4 items-center ml-2"
               onPress={() => setIsEditing(false)}
+              disabled={saving}
             >
               <Text className="text-white text-base font-medium">Cancel</Text>
             </TouchableOpacity>
@@ -344,63 +533,239 @@ export default function ProfileScreen() {
       </View>
     );
   };
+
+  const renderDiagnosisForm = () => (
+    <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+      <Text className="text-lg font-bold text-slate-800 mb-4">Edit Diagnosis Information</Text>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Diagnosis Type</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={diagnosisFormData.type}
+          onChangeText={(text) => setDiagnosisFormData({...diagnosisFormData, type: text})}
+          placeholder="e.g., Epilepsy, Absence Seizures, etc."
+          placeholderTextColor="#9CA3AF"
+        />
+      </View>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Diagnosis Date</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={diagnosisFormData.diagnosisDate}
+          onChangeText={(text) => setDiagnosisFormData({...diagnosisFormData, diagnosisDate: text})}
+          placeholder="YYYY-MM-DD"
+          placeholderTextColor="#9CA3AF"
+        />
+      </View>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Diagnosed By</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={diagnosisFormData.diagnosedBy}
+          onChangeText={(text) => setDiagnosisFormData({...diagnosisFormData, diagnosedBy: text})}
+          placeholder="Doctor name or medical facility"
+          placeholderTextColor="#9CA3AF"
+        />
+      </View>
+      
+      <View className="mb-6">
+        <Text className="text-sm text-slate-600 mb-2">Notes</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={diagnosisFormData.notes}
+          onChangeText={(text) => setDiagnosisFormData({...diagnosisFormData, notes: text})}
+          placeholder="Additional notes about the diagnosis"
+          placeholderTextColor="#9CA3AF"
+          multiline={true}
+          numberOfLines={4}
+          style={{ minHeight: 100, textAlignVertical: 'top' }}
+        />
+      </View>
+      
+      <View className="flex-row space-x-3">
+        <TouchableOpacity 
+          className={`flex-1 rounded-lg p-4 items-center mr-2 ${saving ? 'bg-gray-400' : 'bg-green-500'}`}
+          onPress={handleSaveDiagnosis}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text className="text-white text-base font-medium">Save Changes</Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity 
+          className="flex-1 bg-gray-500 rounded-lg p-4 items-center ml-2"
+          onPress={resetDiagnosisForm}
+          disabled={saving}
+        >
+          <Text className="text-white text-base font-medium">Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
   
   const renderDiagnosisSection = () => {
     if (!profile) return null;
 
     return (
       <View className="mb-6">
-        <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row mb-4">
-            <View className="flex-1">
-              <Text className="text-sm text-slate-600 mb-1">Diagnosis Type</Text>
-              <Text className="text-base text-slate-800 font-medium">
-                {profile.diagnosis.type || 'Not specified'}
-              </Text>
-            </View>
-          </View>
-          
-          <View className="flex-row mb-4">
-            <View className="flex-1">
-              <Text className="text-sm text-slate-600 mb-1">Diagnosis Date</Text>
-              <Text className="text-base text-slate-800 font-medium">
-                {profile.diagnosis.diagnosisDate || 'Not specified'}
-              </Text>
-            </View>
-          </View>
-          
-          <View className="flex-row mb-4">
-            <View className="flex-1">
-              <Text className="text-sm text-slate-600 mb-1">Diagnosed By</Text>
-              <Text className="text-base text-slate-800 font-medium">
-                {profile.diagnosis.diagnosedBy || 'Not specified'}
-              </Text>
-            </View>
-          </View>
-          
-          <View className="flex-row">
-            <View className="flex-1">
-              <Text className="text-sm text-slate-600 mb-1">Notes</Text>
-              <Text className="text-base text-slate-800 font-medium">
-                {profile.diagnosis.notes || 'No notes added'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        {isEditingDiagnosis && renderDiagnosisForm()}
         
-        <TouchableOpacity className="bg-blue-500 rounded-lg p-4 flex-row items-center justify-center">
-          <Ionicons name="create-outline" size={20} color="white" />
-          <Text className="text-white text-base font-medium ml-2">Edit Diagnosis Information</Text>
-        </TouchableOpacity>
+        {!isEditingDiagnosis && (
+          <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row mb-4">
+              <View className="flex-1">
+                <Text className="text-sm text-slate-600 mb-1">Diagnosis Type</Text>
+                <Text className="text-base text-slate-800 font-medium">
+                  {profile.diagnosis.type || 'Not specified'}
+                </Text>
+              </View>
+            </View>
+            
+            <View className="flex-row mb-4">
+              <View className="flex-1">
+                <Text className="text-sm text-slate-600 mb-1">Diagnosis Date</Text>
+                <Text className="text-base text-slate-800 font-medium">
+                  {profile.diagnosis.diagnosisDate || 'Not specified'}
+                </Text>
+              </View>
+            </View>
+            
+            <View className="flex-row mb-4">
+              <View className="flex-1">
+                <Text className="text-sm text-slate-600 mb-1">Diagnosed By</Text>
+                <Text className="text-base text-slate-800 font-medium">
+                  {profile.diagnosis.diagnosedBy || 'Not specified'}
+                </Text>
+              </View>
+            </View>
+            
+            <View className="flex-row">
+              <View className="flex-1">
+                <Text className="text-sm text-slate-600 mb-1">Notes</Text>
+                <Text className="text-base text-slate-800 font-medium">
+                  {profile.diagnosis.notes || 'No notes added'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+        
+        {!isEditingDiagnosis && (
+          <TouchableOpacity 
+            className="bg-blue-500 rounded-lg p-4 flex-row items-center justify-center"
+            onPress={handleEditDiagnosis}
+          >
+            <Ionicons name="create-outline" size={20} color="white" />
+            <Text className="text-white text-base font-medium ml-2">Edit Diagnosis Information</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
   
+  const renderCaregiverForm = () => (
+    <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+      <Text className="text-lg font-bold text-slate-800 mb-4">
+        {editingCaregiver ? 'Edit Caregiver' : 'Add New Caregiver'}
+      </Text>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Full Name*</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={caregiverFormData.name}
+          onChangeText={(text) => setCaregiverFormData({...caregiverFormData, name: text})}
+          placeholder="Enter full name"
+          placeholderTextColor="#9CA3AF"
+        />
+      </View>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Relation*</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={caregiverFormData.relation}
+          onChangeText={(text) => setCaregiverFormData({...caregiverFormData, relation: text})}
+          placeholder="e.g., Parent, Guardian, Nurse"
+          placeholderTextColor="#9CA3AF"
+        />
+      </View>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Phone Number*</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={caregiverFormData.phone}
+          onChangeText={(text) => setCaregiverFormData({...caregiverFormData, phone: text})}
+          placeholder="Enter phone number"
+          placeholderTextColor="#9CA3AF"
+          keyboardType="phone-pad"
+        />
+      </View>
+      
+      <View className="mb-4">
+        <Text className="text-sm text-slate-600 mb-2">Email (Optional)</Text>
+        <TextInput
+          className="border border-gray-300 rounded-lg p-3 text-base"
+          value={caregiverFormData.email}
+          onChangeText={(text) => setCaregiverFormData({...caregiverFormData, email: text})}
+          placeholder="Enter email address"
+          placeholderTextColor="#9CA3AF"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+      </View>
+      
+      <View className="flex-row items-center justify-between mb-6">
+        <View className="flex-1">
+          <Text className="text-base font-medium text-slate-800 mb-1">Primary Caregiver</Text>
+          <Text className="text-sm text-slate-600">Main contact for emergencies</Text>
+        </View>
+        <Switch
+          value={caregiverFormData.isPrimary}
+          onValueChange={(value) => setCaregiverFormData({...caregiverFormData, isPrimary: value})}
+          trackColor={{ false: '#E0E0E0', true: '#BDE3FF' }}
+          thumbColor={caregiverFormData.isPrimary ? '#3B82F6' : '#F4F3F4'}
+        />
+      </View>
+      
+      <View className="flex-row space-x-3">
+        <TouchableOpacity 
+          className={`flex-1 rounded-lg p-4 items-center mr-2 ${saving ? 'bg-gray-400' : 'bg-green-500'}`}
+          onPress={handleSaveCaregiver}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text className="text-white text-base font-medium">
+              {editingCaregiver ? 'Update Caregiver' : 'Add Caregiver'}
+            </Text>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity 
+          className="flex-1 bg-gray-500 rounded-lg p-4 items-center ml-2"
+          onPress={resetCaregiverForm}
+          disabled={saving}
+        >
+          <Text className="text-white text-base font-medium">Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const renderCaregiversSection = () => {
     if (!profile) return null;
 
     return (
       <View className="mb-6">
+        {showAddCaregiverForm && renderCaregiverForm()}
+        
         {profile.caregivers && profile.caregivers.length > 0 ? (
           profile.caregivers.map((caregiver) => (
             <View key={caregiver.id} className="bg-white rounded-xl p-4 mb-4 flex-row shadow-sm">
@@ -422,32 +787,58 @@ export default function ProfileScreen() {
                 
                 <View className="flex-row items-center">
                   <Ionicons name="mail" size={16} color="#3B82F6" />
-                  <Text className="text-base text-slate-800 ml-2">{caregiver.email}</Text>
+                  <Text className="text-base text-slate-800 ml-2">{caregiver.email || 'No email'}</Text>
                 </View>
               </View>
               
               <View className="justify-around">
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity 
+                  className="p-2"
+                  onPress={() => handleEditCaregiver(caregiver)}
+                >
                   <Ionicons name="create-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity 
+                  className="p-2"
+                  onPress={() => {
+                    Alert.alert(
+                      'Delete Caregiver',
+                      `Are you sure you want to delete ${caregiver.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => deleteCaregiver(caregiver.id)
+                        }
+                      ]
+                    );
+                  }}
+                >
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
             </View>
           ))
         ) : (
-          <View className="bg-white rounded-xl p-8 mb-4 shadow-sm items-center">
-            <Ionicons name="people-outline" size={48} color="#9CA3AF" />
-            <Text className="text-lg text-gray-500 mt-2 text-center">No caregivers added yet</Text>
-            <Text className="text-sm text-gray-400 mt-1 text-center">Add family members or caregivers</Text>
-          </View>
+          !showAddCaregiverForm && (
+            <View className="bg-white rounded-xl p-8 mb-4 shadow-sm items-center">
+              <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+              <Text className="text-lg text-gray-500 mt-2 text-center">No caregivers added yet</Text>
+              <Text className="text-sm text-gray-400 mt-1 text-center">Add family members or caregivers</Text>
+            </View>
+          )
         )}
         
-        <TouchableOpacity className="bg-blue-500 rounded-lg p-4 flex-row items-center justify-center mt-2">
-          <Ionicons name="add-circle" size={20} color="white" />
-          <Text className="text-white text-base font-medium ml-2">Add Caregiver</Text>
-        </TouchableOpacity>
+        {!showAddCaregiverForm && (
+          <TouchableOpacity 
+            className="bg-blue-500 rounded-lg p-4 flex-row items-center justify-center mt-2"
+            onPress={handleAddCaregiver}
+          >
+            <Ionicons name="add-circle" size={20} color="white" />
+            <Text className="text-white text-base font-medium ml-2">Add Caregiver</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -474,7 +865,23 @@ export default function ProfileScreen() {
                 <TouchableOpacity className="p-2">
                   <Ionicons name="create-outline" size={20} color="#3B82F6" />
                 </TouchableOpacity>
-                <TouchableOpacity className="p-2">
+                <TouchableOpacity 
+                  className="p-2"
+                  onPress={() => {
+                    Alert.alert(
+                      'Delete Emergency Contact',
+                      `Are you sure you want to delete ${contact.name}?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => deleteEmergencyContact(contact.id)
+                        }
+                      ]
+                    );
+                  }}
+                >
                   <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 </TouchableOpacity>
               </View>
@@ -613,6 +1020,21 @@ export default function ProfileScreen() {
     );
   }
 
+  // Show authentication required message
+  if (!user) {
+    return (
+      <SafeAreaView className="flex-1 bg-blue-50">
+        <View className="flex-1 justify-center items-center p-6">
+          <Ionicons name="lock-closed" size={64} color="#E74C3C" />
+          <Text className="text-xl font-bold text-slate-800 mt-4 mb-2">Authentication Required</Text>
+          <Text className="text-lg text-gray-600 text-center">
+            Please log in to view and manage your profile.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-blue-50 overflow-hidden">
       <View className="flex-row items-center justify-between p-4 bg-blue-50">
@@ -623,7 +1045,17 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={24} color="#3B82F6" />
         </TouchableOpacity>
         <Text className="text-2xl font-bold text-slate-800">Profile</Text>
-        <View className="w-10" />
+        <TouchableOpacity 
+          className="p-2"
+          onPress={handleRefreshProfile}
+          disabled={loading || saving}
+        >
+          <Ionicons 
+            name="refresh" 
+            size={24} 
+            color={loading || saving ? "#9CA3AF" : "#3B82F6"} 
+          />
+        </TouchableOpacity>
       </View>
 
       <View className="bg-blue-50">
@@ -725,6 +1157,30 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView className="flex-1 p-4 mb-20" style={{ overflow: 'hidden' }}>
+        {/* Debug info - remove in production */}
+        {__DEV__ && (
+          <View className="bg-blue-100 p-3 rounded-lg mb-4">
+            <Text className="text-sm text-blue-800">
+              User ID: {user?.uid || 'Not logged in'}
+            </Text>
+            <Text className="text-sm text-blue-800">
+              Profile loaded: {profile ? 'Yes' : 'No'}
+            </Text>
+            <Text className="text-sm text-blue-800">
+              Caregivers: {profile?.caregivers?.length || 0}
+            </Text>
+            <Text className="text-sm text-blue-800">
+              Emergency Contacts: {profile?.emergencyContacts?.length || 0}
+            </Text>
+            <TouchableOpacity 
+              className="bg-red-500 rounded p-2 mt-2"
+              onPress={handleForceCreateProfile}
+            >
+              <Text className="text-white text-center font-medium">Force Create Profile</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {activeSection === 'child' && renderChildSection()}
         {activeSection === 'diagnosis' && renderDiagnosisSection()}
         {activeSection === 'caregivers' && renderCaregiversSection()}
