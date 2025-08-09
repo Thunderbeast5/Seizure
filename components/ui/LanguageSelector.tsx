@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React from 'react';
 import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Language, SUPPORTED_LANGUAGES, useLanguage } from '../contexts/LanguageContext';
+import { Language, SUPPORTED_LANGUAGES, useLanguage } from '../../contexts/LanguageContext';
 
 interface LanguageSelectorProps {
   visible: boolean;

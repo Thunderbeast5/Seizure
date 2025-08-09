@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import { LanguageSelector } from '../../components/LanguageSelector';
+import { LanguageSelector } from '../../components/ui/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
