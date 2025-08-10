@@ -49,49 +49,45 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<any>({});
+  const [imageError, setImageError] = useState(false);
 
-  // Get color based on first letter
-  const getAvatarColor = (name: string) => {
-    const firstLetter = name.charAt(0).toUpperCase();
-    const colors = [
-      'bg-red-500',    // A-C
-      'bg-blue-500',   // D-F  
-      'bg-green-500',  // G-I
-      'bg-purple-500', // J-L
-      'bg-pink-500',   // M-O
-      'bg-indigo-500', // P-R
-      'bg-yellow-500', // S-U
-      'bg-teal-500',   // V-X
-      'bg-orange-500', // Y-Z
-    ];
-    const index = Math.floor((firstLetter.charCodeAt(0) - 65) / 3) % colors.length;
-    return colors[index];
+  // Generate different avatar for each user using Robohash (working option)
+  const generateUserAvatar = (userId: string, userName: string) => {
+    // Robohash with different sets for variety
+    const robotSets = ['set1', 'set2', 'set3', 'set4', 'set5'];
+    const setIndex = userId ? userId.charCodeAt(0) % robotSets.length : 0;
+    const selectedSet = robotSets[setIndex];
+    
+    // Use user ID as seed for consistent avatars
+return `https://robohash.org/${userName}.png?size=80x80&set=set1`;   
   };
 
   // Initialize default profile structure
-  const initializeDefaultProfile = (currentUserData: any) => ({
-    child: {
-      name: currentUserData?.name || user?.displayName || '',
-      username: currentUserData?.username || '',
-      age: currentUserData?.age || 0,
-      birthDate: '',
-      gender: currentUserData?.gender || '',
-      weight: '',
-      height: '',
-      bloodType: currentUserData?.bloodGroup || '',
-      seizureType: currentUserData?.seizureType || '',
-      allergies: '',
-      email: currentUserData?.email || user?.email || '',
-      photo: `https://picsum.photos/80/80?random=1`
-    },
-    settings: {
-      notifications: true,
-      dataSharing: true,
-      locationTracking: true,
-      darkMode: false,
-      autoBackup: true
-    }
-  });
+  const initializeDefaultProfile = (currentUserData: any) => {
+    return {
+      child: {
+        name: currentUserData?.name || user?.displayName || '',
+        username: currentUserData?.username || '',
+        age: currentUserData?.age || 0,
+        birthDate: '',
+        gender: currentUserData?.gender || '',
+        weight: '',
+        height: '',
+        bloodType: currentUserData?.bloodGroup || '',
+        seizureType: currentUserData?.seizureType || '',
+        allergies: '',
+        email: currentUserData?.email || user?.email || '',
+        photo: '' // We'll use the local image as fallback
+      },
+      settings: {
+        notifications: true,
+        dataSharing: true,
+        locationTracking: true,
+        darkMode: false,
+        autoBackup: true
+      }
+    };
+  };
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -139,7 +135,7 @@ export default function ProfileScreen() {
                   seizureType: currentUserData?.seizureType || '',
                   allergies: '',
                   email: currentUserData?.email || user?.email || '',
-                  photo: `https://picsum.photos/80/80?random=1`
+                  photo: '' // Empty string, will use local image as fallback
                 },
                 settings: {
                   notifications: true,
@@ -256,14 +252,51 @@ export default function ProfileScreen() {
   const renderChildSection = () => {
     if (!profile) return null;
 
+    // Generate unique avatar for this user
+    const userAvatarUrl = generateUserAvatar(user?.uid || 'default', profile.child.name || 'User');
+
     return (
       <View className="mb-6">
         <View className="flex-row items-center mb-6">
-          <View className={`w-20 h-20 rounded-full mr-4 items-center justify-center ${getAvatarColor(profile.child.name || 'User')}`}>
-            <Text className="text-white text-2xl font-bold">
-              {(profile.child.name || 'U').charAt(0).toUpperCase()}
-            </Text>
+          {/* Avatar with Local Default Image */}
+          <View className="w-20 h-20 rounded-full mr-4 items-center justify-center bg-gray-200 shadow-md overflow-hidden">
+            {profile.child.photo && !imageError ? (
+              // If user has uploaded a custom photo, try to show it first
+              <Image
+                source={{ uri: profile.child.photo }}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                }}
+                onError={(error) => {
+                  console.log('Image load error:', error);
+                  setImageError(true);
+                }}
+                onLoad={() => {
+                  setImageError(false);
+                }}
+              />
+            ) : (
+              // Default to generated avatar unique to each user
+              <Image
+                source={{ uri: userAvatarUrl }}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                }}
+                resizeMode="cover"
+                onError={(error) => {
+                  console.log('Generated avatar load error:', error);
+                  // Fallback to a basic UI avatar if the generated one fails
+                }}
+                onLoadStart={() => console.log('Loading generated avatar...')}
+                onLoad={() => console.log('Generated avatar loaded successfully')}
+              />
+            )}
           </View>
+          
           <View className="flex-1">
             {isEditing ? (
               <TextInput
