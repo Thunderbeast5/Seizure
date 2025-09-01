@@ -1,29 +1,77 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read and write their own user document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Users can only access their own seizures
-    match /seizures/{seizureId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-
-    // Users can only access their own profiles
+    // User profiles - users can read/write their own, doctors can read any profile for search
     match /profiles/{profileId} {
       allow read, write: if request.auth != null && request.auth.uid == profileId;
       allow create: if request.auth != null && request.auth.uid == profileId;
+      // Doctors can read any profile for search purposes (this allows patient discovery)
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+      // Doctors can update profiles they're assigned to OR when accepting a connection request
+      allow update: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) &&
+        (resource.data.doctorId == request.auth.uid || 
+         request.resource.data.doctorId == request.auth.uid);
     }
-    
-    // Users can only access their own medications
+
+    // Doctors - anyone can read, only doctors can write their own
+    match /doctors/{doctorId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == doctorId;
+      allow create: if request.auth != null;
+    }
+
+    // Seizures - users can read/write their own, doctors can read/write assigned patients
+    match /seizures/{seizureId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Doctors can read/write seizures of patients assigned to them
+      allow read, write: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/profiles/$(resource.data.userId)) &&
+        get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.doctorId == request.auth.uid;
+      // Doctors can create seizures for assigned patients
+      allow create: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/profiles/$(request.resource.data.userId)) &&
+        get(/databases/$(database)/documents/profiles/$(request.resource.data.userId)).data.doctorId == request.auth.uid;
+    }
+
+    // Medications - users can read/write their own, doctors can read/write assigned patients
     match /medications/{medicationId} {
       allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Doctors can read/write medications of patients assigned to them
+      allow read, write: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/profiles/$(resource.data.userId)) &&
+        get(/databases/$(database)/documents/profiles/$(resource.data.userId)).data.doctorId == request.auth.uid;
+      // Doctors can create medications for assigned patients
+      allow create: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/profiles/$(request.resource.data.userId)) &&
+        get(/databases/$(database)/documents/profiles/$(request.resource.data.userId)).data.doctorId == request.auth.uid;
     }
-    
+
+    // Patient connections - patients can read their own, doctors can read their own
+    match /patientConnections/{connectionId} {
+      allow read: if request.auth != null && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+      allow create: if request.auth != null && 
+        request.resource.data.doctorId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+      allow delete: if request.auth != null && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+    }
+
     // Allow users to create documents (for initial user creation)
     match /{document=**} {
       allow create: if request.auth != null;

@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  profileService, 
-  ProfileData, 
-  ChildInfo, 
-  DiagnosisInfo, 
-  Caregiver, 
-  EmergencyContact, 
-  ProfileSettings,
-  CreateProfileData 
+import {
+    Caregiver,
+    ChildInfo,
+    DiagnosisInfo,
+    EmergencyContact,
+    ProfileData,
+    profileService,
+    ProfileSettings
 } from '../services/profileService';
 
 export const useProfile = () => {
@@ -316,6 +315,56 @@ export const useProfile = () => {
     }
   }, [user?.uid]);
 
+  // Assign doctor to patient
+  const assignDoctor = useCallback(async (doctorId: string) => {
+    if (!user?.uid) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      setSaving(true);
+      await profileService.assignDoctor(user.uid, doctorId);
+      
+      // Update local state
+      setProfile(prev => prev ? {
+        ...prev,
+        doctorId
+      } : null);
+      
+      Alert.alert('Success', 'Doctor assigned successfully!');
+    } catch (error) {
+      console.error('Error assigning doctor:', error);
+      throw error;
+    } finally {
+      setSaving(false);
+    }
+  }, [user?.uid]);
+
+  // Remove doctor assignment
+  const removeDoctor = useCallback(async () => {
+    if (!user?.uid) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      setSaving(true);
+      await profileService.removeDoctor(user.uid);
+      
+      // Update local state
+      setProfile(prev => prev ? {
+        ...prev,
+        doctorId: undefined
+      } : null);
+      
+      Alert.alert('Success', 'Doctor removed successfully!');
+    } catch (error) {
+      console.error('Error removing doctor:', error);
+      throw error;
+    } finally {
+      setSaving(false);
+    }
+  }, [user?.uid]);
+
   // Subscribe to profile changes
   useEffect(() => {
     if (!user?.uid) {
@@ -355,5 +404,7 @@ export const useProfile = () => {
     updateEmergencyContact,
     deleteEmergencyContact,
     updateSettings,
+    assignDoctor,
+    removeDoctor,
   };
 }; 

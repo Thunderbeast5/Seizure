@@ -1,10 +1,10 @@
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  onSnapshot,
-  serverTimestamp 
+import {
+    doc,
+    getDoc,
+    onSnapshot,
+    serverTimestamp,
+    setDoc,
+    updateDoc
 } from 'firebase/firestore';
 import { db } from '../firebase.config';
 
@@ -58,6 +58,7 @@ export interface ProfileData {
   caregivers: Caregiver[];
   emergencyContacts: EmergencyContact[];
   settings: ProfileSettings;
+  doctorId?: string; // Add doctor assignment
   createdAt?: any;
   updatedAt?: any;
 }
@@ -381,6 +382,44 @@ class ProfileService {
       console.log('Settings updated successfully');
     } catch (error) {
       console.error('Error updating settings:', error);
+      throw error;
+    }
+  }
+
+  // Assign doctor to patient
+  async assignDoctor(userId: string, doctorId: string): Promise<void> {
+    try {
+      const profileRef = doc(db, this.collectionName, userId);
+      
+      const updateData = {
+        doctorId,
+        updatedAt: serverTimestamp()
+      };
+
+      console.log('Assigning doctor to user:', userId, doctorId);
+      await setDoc(profileRef, updateData, { merge: true });
+      console.log('Doctor assigned successfully');
+    } catch (error) {
+      console.error('Error assigning doctor:', error);
+      throw error;
+    }
+  }
+
+  // Remove doctor assignment
+  async removeDoctor(userId: string): Promise<void> {
+    try {
+      const profileRef = doc(db, this.collectionName, userId);
+      
+      const updateData = {
+        doctorId: null,
+        updatedAt: serverTimestamp()
+      };
+
+      console.log('Removing doctor from user:', userId);
+      await setDoc(profileRef, updateData, { merge: true });
+      console.log('Doctor removed successfully');
+    } catch (error) {
+      console.error('Error removing doctor:', error);
       throw error;
     }
   }

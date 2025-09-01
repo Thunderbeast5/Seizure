@@ -165,11 +165,6 @@ export default function MedicationsScreen() {
     }
   };
 
-  const updateTime = (index: number, newTime: string) => {
-    const newTimes = [...times];
-    newTimes[index] = newTime;
-    setTimes(newTimes);
-  };
 
   // Show loading screen
   if (loading) {
@@ -237,7 +232,7 @@ export default function MedicationsScreen() {
           <Ionicons name="medical-outline" size={64} color="#A0A0A0" />
           <Text className="text-xl font-bold text-gray-600 mt-4 mb-2">No Medications</Text>
           <Text className="text-lg text-gray-500 text-center mb-6">
-            You haven't added any medications yet. Tap the button below to get started.
+            You haven&apos;t added any medications yet. Tap the button below to get started.
           </Text>
         </View>
       ) : (
@@ -267,11 +262,14 @@ export default function MedicationsScreen() {
               <View className="flex-row mb-3 items-start">
                 <Text className="text-lg font-medium text-gray-600 w-24">Time:</Text>
                 <View className="flex-row flex-wrap flex-1">
-                  {med.time.map((time, index) => (
+                  {(med.time || []).map((time, index) => (
                     <View key={index} className="bg-blue-50 py-2 px-3 rounded-lg mr-2 mb-2">
                       <Text className="text-base text-blue-600 font-medium">{time}</Text>
                     </View>
                   ))}
+                  {(!med.time || med.time.length === 0) && (
+                    <Text className="text-base text-gray-500">No times set</Text>
+                  )}
                 </View>
               </View>
               
