@@ -1,6 +1,6 @@
 // index.tsx - Updated with multilingual support and fixed RTL handling
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+// Removed BlurView import to fix native module error
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
@@ -123,7 +123,7 @@ export default function HomeScreen() {
       animationType="none"
       onRequestClose={closeDrawer}
     >
-      {/* Blurred Background Overlay */}
+      {/* Background Overlay */}
       <Animated.View 
         style={{
           position: 'absolute',
@@ -132,21 +132,14 @@ export default function HomeScreen() {
           right: 0,
           bottom: 0,
           opacity: overlayOpacity,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
         }}
       >
-        <BlurView
-          intensity={30}
-          tint="dark"
-          style={{
-            flex: 1,
-          }}
-        >
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            onPress={closeDrawer}
-            activeOpacity={1}
-          />
-        </BlurView>
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          onPress={closeDrawer}
+          activeOpacity={1}
+        />
       </Animated.View>
 
       {/* Drawer Content */}
@@ -165,14 +158,16 @@ export default function HomeScreen() {
           }],
         }}
       >
-        <BlurView
-          intensity={80}
-          tint="light"
+        <View
           style={{
             flex: 1,
             paddingTop: Platform.OS === 'ios' ? 50 : 30,
             paddingHorizontal: 20,
-            borderWidth: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderTopRightRadius: isRTL ? 0 : 20,
+            borderBottomRightRadius: isRTL ? 0 : 20,
+            borderTopLeftRadius: isRTL ? 20 : 0,
+            borderBottomLeftRadius: isRTL ? 20 : 0,
           }}
         >
           {/* Drawer Header */}
@@ -538,7 +533,7 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
           </ScrollView>
-        </BlurView>
+        </View>
       </Animated.View>
     </Modal>
   );

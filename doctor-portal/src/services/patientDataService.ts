@@ -25,6 +25,7 @@ export interface PatientSeizure {
   triggers?: string;
   severity?: string;
   notes?: string;
+  videoUrl?: string;
   createdAt?: any;
   updatedAt?: any;
 }

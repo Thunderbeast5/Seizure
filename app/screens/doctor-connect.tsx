@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import {
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  SafeAreaView,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { ConnectionRequests } from '../../components/ConnectionRequests';
 import { PatientIdDisplay } from '../../components/PatientIdDisplay';
-import { ThemedView } from '../../components/ThemedView';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfile } from '../../hooks/useProfile';
 import { doctorService } from '../../services/doctorService';
 
 export default function DoctorConnect() {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const { profile, assignDoctor, removeDoctor } = useProfile();
   const [loading, setLoading] = useState(false);
@@ -25,7 +36,7 @@ export default function DoctorConnect() {
   const loadDoctors = async () => {
     try {
       setLoading(true);
-      // Doctor loading logic can be implemented here if needed
+      // Doctor loading logic if needed
     } catch (error) {
       console.error('Error loading doctors:', error);
       Alert.alert('Error', 'Failed to load doctors');
@@ -36,12 +47,10 @@ export default function DoctorConnect() {
 
   const handleSearchDoctors = async () => {
     if (!searchTerm.trim()) return;
-    
     try {
       setSearching(true);
       const results = await doctorService.getAllDoctors();
-      // Filter results based on search term
-      const filteredResults = results.filter(doctor => 
+      const filteredResults = results.filter((doctor) =>
         doctor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doctor.specialty?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -58,7 +67,6 @@ export default function DoctorConnect() {
     try {
       await assignDoctor(doctorId);
       Alert.alert('Success', 'Doctor assigned successfully!');
-      // Refresh the list if needed
     } catch (error) {
       console.error('Error assigning doctor:', error);
       Alert.alert('Error', 'Failed to assign doctor');
@@ -78,46 +86,42 @@ export default function DoctorConnect() {
             try {
               await removeDoctor();
               Alert.alert('Success', 'Doctor removed successfully!');
-              // Refresh the list if needed
             } catch (error) {
               console.error('Error removing doctor:', error);
               Alert.alert('Error', 'Failed to remove doctor');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const renderCurrentDoctor = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Current Doctor</Text>
+    <View className="bg-white rounded-xl p-5 mb-6 shadow">
+      <Text className="text-xl font-bold mb-4 text-slate-800">Current Doctor</Text>
       {profile?.doctorId ? (
-        <View style={styles.connectedDoctorCard}>
-          <View style={styles.doctorInfo}>
-            <View style={styles.doctorAvatar}>
-              <Text style={styles.avatarText}>D</Text>
+        <View>
+          <View className="flex-row items-center mb-4">
+            <View className="w-14 h-14 rounded-full bg-blue-50 justify-center items-center mr-4">
+              <Text className="text-2xl font-bold text-blue-600">D</Text>
             </View>
-            <View style={styles.doctorDetails}>
-              <Text style={styles.connectedDoctorName}>Connected Doctor</Text>
-              <Text style={styles.connectedStatus}>Status: Connected</Text>
-              <Text style={styles.connectedNote}>
-                Your doctor can now view your medical data and provide care.
-              </Text>
+            <View>
+              <Text className="text-lg font-bold text-slate-800 mb-1">Connected Doctor</Text>
+              <Text className="text-base text-green-500 font-semibold mb-1">Status: Connected</Text>
+              <Text className="text-base text-slate-700">Your doctor can now view your medical data and provide care.</Text>
             </View>
           </View>
-          
-          <TouchableOpacity 
-            style={styles.removeButton}
+          <TouchableOpacity
+            className="bg-red-500 py-3 px-6 rounded-lg items-center mt-2"
             onPress={handleRemoveDoctor}
           >
-            <Text style={styles.removeButtonText}>Remove Doctor</Text>
+            <Text className="text-white font-semibold text-lg">Remove Doctor</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.noDoctorCard}>
-          <Text style={styles.noDoctorTitle}>No Doctor Assigned</Text>
-          <Text style={styles.noDoctorSubtext}>
+        <View className="bg-slate-50 rounded-xl p-6 items-center border-2 border-slate-200">
+          <Text className="text-lg font-bold mb-1 text-slate-800">No Doctor Assigned</Text>
+          <Text className="text-base text-slate-600 text-center">
             Search for doctors and send connection requests to get started.
           </Text>
         </View>
@@ -126,13 +130,12 @@ export default function DoctorConnect() {
   );
 
   const renderDoctorSearch = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Search & Connect with Doctors</Text>
-      
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
+    <View className="bg-white rounded-xl p-5 mb-6 shadow">
+      <Text className="text-xl font-bold mb-4 text-slate-800">Search & Connect with Doctors</Text>
+      <View className="flex-row mb-3">
+        <View className="flex-1 mr-2">
           <TextInput
-            style={styles.searchInput}
+            className="border border-slate-300 rounded-lg px-4 py-2 text-base text-slate-900 bg-white"
             placeholder="Search doctors by name..."
             placeholderTextColor="#9CA3AF"
             value={searchTerm}
@@ -140,45 +143,42 @@ export default function DoctorConnect() {
             onSubmitEditing={handleSearchDoctors}
           />
         </View>
-        <TouchableOpacity 
-          style={[styles.searchButton, (searching || !searchTerm.trim()) && styles.searchButtonDisabled]}
+        <TouchableOpacity
+          className={`bg-blue-600 rounded-lg px-4 py-2 justify-center items-center ${searching || !searchTerm.trim() ? 'opacity-50' : ''}`}
           onPress={handleSearchDoctors}
           disabled={searching || !searchTerm.trim()}
         >
           {searching ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Text style={styles.searchButtonText}>Search</Text>
+            <Text className="text-white font-semibold">Search</Text>
           )}
         </TouchableOpacity>
       </View>
-      
       {searchResults.length > 0 && (
-        <View style={styles.resultsContainer}>
-          <Text style={styles.resultsTitle}>
+        <View className="mt-2">
+          <Text className="text-base mb-2 text-slate-700">
             Found {searchResults.length} doctor(s)
           </Text>
-          
           {searchResults.map((doctor) => (
-            <View key={doctor.id} style={styles.doctorResultCard}>
-              <View style={styles.doctorInfo}>
-                <View style={styles.doctorAvatar}>
-                  <Text style={styles.avatarText}>
+            <View key={doctor.id} className="bg-slate-50 rounded-xl p-4 mb-3 flex-row items-center justify-between border border-slate-200">
+              <View className="flex-row items-center">
+                <View className="w-12 h-12 rounded-full bg-blue-50 justify-center items-center mr-3">
+                  <Text className="text-xl font-bold text-blue-600">
                     {doctor.name?.charAt(0).toUpperCase() || 'D'}
                   </Text>
                 </View>
-                <View style={styles.doctorDetails}>
-                  <Text style={styles.doctorName}>{doctor.name || 'Unknown'}</Text>
-                  <Text style={styles.doctorSpecialty}>{doctor.specialty || 'General'}</Text>
-                  <Text style={styles.doctorHospital}>{doctor.hospital || 'Unknown Hospital'}</Text>
+                <View>
+                  <Text className="font-bold text-slate-800">{doctor.name || 'Unknown'}</Text>
+                  <Text className="text-slate-600">{doctor.specialty || 'General'}</Text>
+                  <Text className="text-slate-400 text-xs">{doctor.hospital || 'Unknown Hospital'}</Text>
                 </View>
               </View>
-            
-              <TouchableOpacity 
-                style={styles.connectButton}
+              <TouchableOpacity
+                className="bg-green-500 px-3 py-2 rounded-lg"
                 onPress={() => handleAssignDoctor(doctor.id)}
               >
-                <Text style={styles.connectButtonText}>Connect</Text>
+                <Text className="text-white font-semibold">Connect</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -186,341 +186,80 @@ export default function DoctorConnect() {
       )}
     </View>
   );
-  
+
   const renderConnectionRequests = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Connection Requests</Text>
+    <View className="mb-6">
       <ConnectionRequests />
     </View>
   );
 
   const renderPatientId = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>My Patient ID</Text>
+    <View className="mb-6">
       <PatientIdDisplay />
     </View>
   );
 
   if (loading) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading doctors...</Text>
+      <SafeAreaView className="flex-1 bg-blue-50">
+        <View className="flex-row items-center justify-between bg-blue-50">
+          <TouchableOpacity
+            className="p-2"
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={28} color="#4A90E2" />
+          </TouchableOpacity>
+          <Text className="text-3xl font-bold text-slate-800">Doctor Connect</Text>
+          <View className="w-12" />
         </View>
-      </ThemedView>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text className="text-lg text-gray-600 mt-4">Loading doctors...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Doctor Connect</Text>
-        <Text style={styles.subtitle}>
-          Connect with healthcare professionals to manage your care
-        </Text>
-
-        {/* Tab Navigation */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'current' && styles.activeTab]}
-            onPress={() => setActiveTab('current')}
-          >
-            <Text style={[styles.tabText, activeTab === 'current' && styles.activeTabText]}>
-              Current
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'search' && styles.activeTab]}
-            onPress={() => setActiveTab('search')}
-          >
-            <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
-              Search
-            </Text>
-          </TouchableOpacity>
-            
+    <SafeAreaView className="flex-1 bg-blue-50">
+      <View className="flex-row items-center justify-between bg-blue-50">
+        <TouchableOpacity
+          className="p-2"
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={28} color="#4A90E2" />
+        </TouchableOpacity>
+        <Text className="text-3xl font-bold text-slate-800">Doctor Connect</Text>
+        <View className="w-12" />
+      </View>
+      <Text className="text-lg text-slate-600 text-center mb-2">
+        Connect with healthcare professionals to manage your care
+      </Text>
+      {/* Tab Navigation */}
+      <View className="flex-row justify-between px-4 mb-4 mt-2">
+        {[
+          { key: 'current', label: 'Current' },
+          { key: 'search', label: 'Search' },
+          { key: 'requests', label: 'Requests' },
+          { key: 'patientId', label: 'Patient ID' },
+        ].map((tab) => (
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-            onPress={() => setActiveTab('requests')}
+            key={tab.key}
+            className={`flex-1 mx-1 py-2 rounded-lg ${activeTab === tab.key ? 'bg-blue-600' : 'bg-slate-200'}`}
+            onPress={() => setActiveTab(tab.key)}
           >
-            <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-              Requests
+            <Text className={`text-center font-semibold ${activeTab === tab.key ? 'text-white' : 'text-slate-700'}`}>
+              {tab.label}
             </Text>
           </TouchableOpacity>
-            
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'patientId' && styles.activeTab]}
-            onPress={() => setActiveTab('patientId')}
-          >
-            <Text style={[styles.tabText, activeTab === 'patientId' && styles.activeTabText]}>
-              Patient ID
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Content */}
+        ))}
+      </View>
+      <ScrollView className="px-4">
         {activeTab === 'current' && renderCurrentDoctor()}
         {activeTab === 'search' && renderDoctorSearch()}
         {activeTab === 'requests' && renderConnectionRequests()}
         {activeTab === 'patientId' && renderPatientId()}
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#EBF8FF',
-  },
-  scrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#1E293B',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#64748B',
-    marginBottom: 24,
-    textAlign: 'center',
-    paddingHorizontal: 16,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EBF8FF',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
-    marginHorizontal: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  activeTab: {
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  activeTabText: {
-    color: '#2563EB',
-    fontWeight: 'bold',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#1E293B',
-  },
-  connectedDoctorCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  doctorInfo: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  doctorAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#EBF8FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2563EB',
-  },
-  doctorDetails: {
-    flex: 1,
-  },
-  connectedDoctorName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  connectedStatus: {
-    fontSize: 16,
-    color: '#10B981',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  connectedNote: {
-    fontSize: 16,
-    color: '#374151',
-    lineHeight: 22,
-  },
-  removeButton: {
-    backgroundColor: '#EF4444',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  removeButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 18,
-  },
-  noDoctorCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
-  },
-  noDoctorTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  noDoctorSubtext: {
-    fontSize: 16,
-    color: '#94A3B8',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  searchInputContainer: {
-    flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  searchInput: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 18,
-    color: '#1E293B',
-  },
-  searchButton: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  searchButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  searchButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  resultsContainer: {
-    marginTop: 16,
-  },
-  resultsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 16,
-  },
-  doctorResultCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  doctorName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  doctorSpecialty: {
-    fontSize: 16,
-    color: '#64748B',
-    marginBottom: 2,
-  },
-  doctorHospital: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  connectButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  connectButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 18,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 18,
-    color: '#64748B',
-    marginTop: 16,
-  },
-});

@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user) {
         try {
           console.log('Setting up real-time listener for user data:', user.uid);
-          const userDocRef = doc(db, 'users', user.uid);
+          const userDocRef = doc(db, 'profiles', user.uid);
           
           // Set up real-time listener for user data
           const unsubscribeUserData = onSnapshot(userDocRef, (doc) => {
@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Saving user data to Firestore:', userData);
       
       // Use merge: true to ensure the document is created or updated
-      await setDoc(doc(db, 'users', user.uid), userData, { merge: true });
+      await setDoc(doc(db, 'profiles', user.uid), userData, { merge: true });
       
       console.log('User data saved successfully');
       

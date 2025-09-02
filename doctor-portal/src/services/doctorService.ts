@@ -46,6 +46,7 @@ export interface PatientSummary {
   medications: string[];
   bloodType: string;
   allergies: string;
+  videoCount?: number;
 }
 
 export interface PatientDetails {
@@ -129,7 +130,8 @@ class DoctorService {
           totalSeizures: 0, // Will be populated when needed
           medications: [], // Will be populated when needed
           bloodType: profileData.child?.bloodType || '',
-          allergies: profileData.child?.allergies || ''
+          allergies: profileData.child?.allergies || '',
+          videoCount: 0 // Will be populated when needed
         });
       }
       

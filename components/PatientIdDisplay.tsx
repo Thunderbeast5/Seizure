@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { ThemedView } from './ThemedView';
 
 export const PatientIdDisplay: React.FC = () => {
   const { user } = useAuth();
@@ -9,7 +8,6 @@ export const PatientIdDisplay: React.FC = () => {
 
   const copyToClipboard = () => {
     if (user?.uid) {
-      // In a real app, you'd use Clipboard API
       Alert.alert(
         'Patient ID Copied',
         `Your Patient ID is: ${user.uid}\n\nShare this ID with your doctor so they can connect with you.`,
@@ -32,138 +30,42 @@ export const PatientIdDisplay: React.FC = () => {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Your Patient ID</Text>
-        <Text style={styles.subtitle}>
-          Share this ID with your doctor to enable secure connections
+    <View className="bg-white rounded-xl p-6 shadow">
+      <Text className="text-2xl font-bold text-slate-800 mb-2">Your Patient ID</Text>
+      <Text className="text-base text-slate-600 mb-4">
+        Share this ID with your doctor to enable secure connections
+      </Text>
+      <View className="bg-blue-50 rounded-lg p-4 mb-4">
+        <Text className="text-sm text-slate-600">Patient ID:</Text>
+        <Text
+          className="text-lg font-bold text-slate-800 font-mono"
+          numberOfLines={1}
+          ellipsizeMode="middle"
+        >
+          {user?.uid || 'Not available'}
         </Text>
-        
-        <View style={styles.idContainer}>
-          <Text style={styles.idLabel}>Patient ID:</Text>
-          <Text style={styles.idValue} numberOfLines={1} ellipsizeMode="middle">
-            {user?.uid || 'Not available'}
-          </Text>
-        </View>
-        
-        <TouchableOpacity
-          style={[styles.button, copied && styles.buttonCopied]}
-          onPress={copyToClipboard}
-        >
-          <Text style={styles.buttonText}>
-            {copied ? 'Copied!' : 'Copy ID'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
-          onPress={shareWithDoctor}
-        >
-          <Text style={styles.secondaryButtonText}>How to Share</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoTitle}>Why share your Patient ID?</Text>
-          <Text style={styles.infoText}>
-            • Doctors can send you connection requests{'\n'}
-            • Secure access to your medical data{'\n'}
-            • Better coordination of your care{'\n'}
-            • Real-time monitoring and support
-          </Text>
-        </View>
       </View>
-    </ThemedView>
+      <TouchableOpacity
+        className={`w-full py-3 rounded-lg mb-3 items-center ${copied ? 'bg-green-500' : 'bg-blue-600'}`}
+        onPress={copyToClipboard}
+      >
+        <Text className="text-white font-semibold">{copied ? 'Copied!' : 'Copy ID'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        className="w-full py-3 rounded-lg border border-slate-300 items-center mb-3"
+        onPress={shareWithDoctor}
+      >
+        <Text className="text-slate-700 font-semibold">How to Share</Text>
+      </TouchableOpacity>
+      <View className="bg-blue-50 rounded-lg p-4 mt-2">
+        <Text className="text-base font-semibold text-blue-600 mb-2">Why share your Patient ID?</Text>
+        <Text className="text-sm text-blue-600 leading-6">
+          • Doctors can send you connection requests{'\n'}
+          • Secure access to your medical data{'\n'}
+          • Better coordination of your care{'\n'}
+          • Real-time monitoring and support
+        </Text>
+      </View>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  idContainer: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
-  },
-  idLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  idValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    fontFamily: 'monospace',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonCopied: {
-    backgroundColor: '#10b981',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  secondaryButtonText: {
-    color: '#374151',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  infoContainer: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#eff6ff',
-    borderRadius: 8,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e40af',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#1e40af',
-    lineHeight: 20,
-  },
-});

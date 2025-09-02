@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSeizures } from '../../hooks/useSeizures';
 import { CreateSeizureData, Seizure } from '../../services/seizureService';
+import { CloudinaryService } from '../../services/cloudinaryService';
 
 // Define seizure types for the dropdown
 const SEIZURE_TYPES = [
@@ -59,6 +60,8 @@ export default function SeizureDiaryScreen() {
   const [videoUrl, setVideoUrl] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploaded, setVideoUploaded] = useState(false);
   
   // Create refs for all inputs to manage focus independently
   const durationRef = useRef<TextInput>(null);
@@ -158,22 +161,48 @@ export default function SeizureDiaryScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoFile = result.assets[0];
-        setSelectedVideo({
-          name: `seizure_video_${Date.now()}.mp4`,
-          uri: videoFile.uri,
-          size: videoFile.fileSize || 0
-        });
-        setVideoUrl(videoFile.uri);
         
-        Alert.alert(
-          'Video Recorded',
-          `Video recorded successfully!\nDuration: ${videoFile.duration ? Math.round(videoFile.duration / 1000) : 'Unknown'} seconds`,
-          [{ text: 'OK' }]
-        );
+        // Show upload progress
+        setUploadingVideo(true);
+        setVideoUploaded(false);
+
+        try {
+          // Upload video to Cloudinary
+          const uploadResult = await CloudinaryService.uploadVideo(videoFile.uri, user?.uid || 'anonymous');
+          
+          // Set the cloud URL instead of local URI
+          setSelectedVideo({
+            name: `seizure_video_${Date.now()}.mp4`,
+            uri: uploadResult.secureUrl,
+            size: videoFile.fileSize || 0,
+            publicId: uploadResult.publicId,
+            cloudUrl: uploadResult.secureUrl
+          });
+          setVideoUrl(uploadResult.secureUrl);
+          
+          // Show success state
+          setVideoUploaded(true);
+          
+          // Reset success state after 3 seconds
+          setTimeout(() => {
+            setVideoUploaded(false);
+          }, 3000);
+        } catch (uploadError) {
+          console.error('Error uploading video:', uploadError);
+          // Fallback to local storage
+          setSelectedVideo({
+            name: `seizure_video_${Date.now()}.mp4`,
+            uri: videoFile.uri,
+            size: videoFile.fileSize || 0
+          });
+          setVideoUrl(videoFile.uri);
+        } finally {
+          setUploadingVideo(false);
+        }
       }
     } catch (error) {
       console.error('Error recording video:', error);
-      Alert.alert('Error', 'Failed to record video. Please try again.');
+      setUploadingVideo(false);
     }
   };
 
@@ -437,11 +466,36 @@ export default function SeizureDiaryScreen() {
           <View className="mb-6">
             <Text className="text-xl font-semibold text-slate-800 mb-3">Record Video</Text>
             <TouchableOpacity
-              className="bg-red-500 rounded-xl p-4 flex-row items-center justify-center shadow-sm"
+              className={`rounded-xl p-4 flex-row items-center justify-center shadow-sm transition-all duration-300 ${
+                videoUploaded 
+                  ? 'bg-green-500' 
+                  : uploadingVideo 
+                    ? 'bg-blue-500' 
+                    : 'bg-red-500'
+              }`}
               onPress={handleRecordVideo}
+              disabled={uploadingVideo}
+              style={{
+                transform: uploadingVideo ? [{ scale: 0.95 }] : [{ scale: 1 }],
+                opacity: uploadingVideo ? 0.8 : 1,
+              }}
             >
-              <Ionicons name="videocam" size={24} color="white" />
-              <Text className="text-white font-semibold text-lg ml-2">Record Seizure Video</Text>
+              {uploadingVideo ? (
+                <>
+                  <ActivityIndicator size="small" color="white" />
+                  <Text className="text-white font-semibold text-lg ml-2">Uploading...</Text>
+                </>
+              ) : videoUploaded ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={24} color="white" />
+                  <Text className="text-white font-semibold text-lg ml-2">Video Uploaded!</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="videocam" size={24} color="white" />
+                  <Text className="text-white font-semibold text-lg ml-2">Record Seizure Video</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
 
