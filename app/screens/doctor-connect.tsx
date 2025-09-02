@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { ConnectionRequests } from '../../components/ConnectionRequests';
 import { PatientIdDisplay } from '../../components/PatientIdDisplay';
 import { ThemedView } from '../../components/ThemedView';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfile } from '../../hooks/useProfile';
 import { doctorService } from '../../services/doctorService';
-import { patientConnectionService } from '../../services/patientConnectionService';
 
 export default function DoctorConnect() {
   const { user } = useAuth();
   const { profile, assignDoctor, removeDoctor } = useProfile();
-  const [doctors, setDoctors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('current');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -27,8 +25,7 @@ export default function DoctorConnect() {
   const loadDoctors = async () => {
     try {
       setLoading(true);
-      const allDoctors = await doctorService.getAllDoctors();
-      setDoctors(allDoctors);
+      // Doctor loading logic can be implemented here if needed
     } catch (error) {
       console.error('Error loading doctors:', error);
       Alert.alert('Error', 'Failed to load doctors');
@@ -42,8 +39,13 @@ export default function DoctorConnect() {
     
     try {
       setSearching(true);
-      const results = await patientConnectionService.searchPatients(searchTerm, user?.uid || '');
-      setSearchResults(results);
+      const results = await doctorService.getAllDoctors();
+      // Filter results based on search term
+      const filteredResults = results.filter(doctor => 
+        doctor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doctor.specialty?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setSearchResults(filteredResults);
     } catch (error) {
       console.error('Error searching doctors:', error);
       Alert.alert('Error', 'Failed to search doctors');
@@ -56,7 +58,7 @@ export default function DoctorConnect() {
     try {
       await assignDoctor(doctorId);
       Alert.alert('Success', 'Doctor assigned successfully!');
-      loadDoctors(); // Refresh the list
+      // Refresh the list if needed
     } catch (error) {
       console.error('Error assigning doctor:', error);
       Alert.alert('Error', 'Failed to assign doctor');
@@ -76,7 +78,7 @@ export default function DoctorConnect() {
             try {
               await removeDoctor();
               Alert.alert('Success', 'Doctor removed successfully!');
-              loadDoctors(); // Refresh the list
+              // Refresh the list if needed
             } catch (error) {
               console.error('Error removing doctor:', error);
               Alert.alert('Error', 'Failed to remove doctor');
@@ -91,29 +93,30 @@ export default function DoctorConnect() {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Current Doctor</Text>
       {profile?.doctorId ? (
-        <View style={styles.doctorCard}>
+        <View style={styles.connectedDoctorCard}>
           <View style={styles.doctorInfo}>
-            <View style={styles.avatar}>
+            <View style={styles.doctorAvatar}>
               <Text style={styles.avatarText}>D</Text>
             </View>
             <View style={styles.doctorDetails}>
-              <Text style={styles.doctorName}>Connected Doctor</Text>
-              <Text style={styles.doctorStatus}>Status: Connected</Text>
-              <Text style={styles.doctorNote}>
+              <Text style={styles.connectedDoctorName}>Connected Doctor</Text>
+              <Text style={styles.connectedStatus}>Status: Connected</Text>
+              <Text style={styles.connectedNote}>
                 Your doctor can now view your medical data and provide care.
-                </Text>
-              </View>
+              </Text>
+            </View>
           </View>
-              <TouchableOpacity 
+          
+          <TouchableOpacity 
             style={styles.removeButton}
             onPress={handleRemoveDoctor}
           >
             <Text style={styles.removeButtonText}>Remove Doctor</Text>
-              </TouchableOpacity>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.noDoctorCard}>
-          <Text style={styles.noDoctorText}>No doctor assigned</Text>
+          <Text style={styles.noDoctorTitle}>No Doctor Assigned</Text>
           <Text style={styles.noDoctorSubtext}>
             Search for doctors and send connection requests to get started.
           </Text>
@@ -127,24 +130,29 @@ export default function DoctorConnect() {
       <Text style={styles.sectionTitle}>Search & Connect with Doctors</Text>
       
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search doctors by name..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          onSubmitEditing={handleSearchDoctors}
-        />
-            <TouchableOpacity 
-          style={styles.searchButton}
+        <View style={styles.searchInputContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search doctors by name..."
+            placeholderTextColor="#9CA3AF"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            onSubmitEditing={handleSearchDoctors}
+          />
+        </View>
+        <TouchableOpacity 
+          style={[styles.searchButton, (searching || !searchTerm.trim()) && styles.searchButtonDisabled]}
           onPress={handleSearchDoctors}
           disabled={searching || !searchTerm.trim()}
-            >
-          <Text style={styles.searchButtonText}>
-            {searching ? 'Searching...' : 'Search'}
-          </Text>
-            </TouchableOpacity>
-            </View>
-            
+        >
+          {searching ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text style={styles.searchButtonText}>Search</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+      
       {searchResults.length > 0 && (
         <View style={styles.resultsContainer}>
           <Text style={styles.resultsTitle}>
@@ -154,7 +162,7 @@ export default function DoctorConnect() {
           {searchResults.map((doctor) => (
             <View key={doctor.id} style={styles.doctorResultCard}>
               <View style={styles.doctorInfo}>
-                <View style={styles.avatar}>
+                <View style={styles.doctorAvatar}>
                   <Text style={styles.avatarText}>
                     {doctor.name?.charAt(0).toUpperCase() || 'D'}
                   </Text>
@@ -166,13 +174,13 @@ export default function DoctorConnect() {
                 </View>
               </View>
             
-            <TouchableOpacity 
+              <TouchableOpacity 
                 style={styles.connectButton}
                 onPress={() => handleAssignDoctor(doctor.id)}
               >
                 <Text style={styles.connectButtonText}>Connect</Text>
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
       )}
@@ -186,10 +194,18 @@ export default function DoctorConnect() {
     </View>
   );
 
+  const renderPatientId = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>My Patient ID</Text>
+      <PatientIdDisplay />
+    </View>
+  );
+
   if (loading) {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4A90E2" />
           <Text style={styles.loadingText}>Loading doctors...</Text>
         </View>
       </ThemedView>
@@ -198,7 +214,7 @@ export default function DoctorConnect() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Doctor Connect</Text>
         <Text style={styles.subtitle}>
           Connect with healthcare professionals to manage your care
@@ -206,25 +222,25 @@ export default function DoctorConnect() {
 
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
-        <TouchableOpacity 
+          <TouchableOpacity 
             style={[styles.tab, activeTab === 'current' && styles.activeTab]}
             onPress={() => setActiveTab('current')}
-        >
+          >
             <Text style={[styles.tabText, activeTab === 'current' && styles.activeTabText]}>
-              Current Doctor
+              Current
             </Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
+          <TouchableOpacity 
             style={[styles.tab, activeTab === 'search' && styles.activeTab]}
             onPress={() => setActiveTab('search')}
           >
             <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
-              Search Doctors
-          </Text>
-        </TouchableOpacity>
-          
-                  <TouchableOpacity
+              Search
+            </Text>
+          </TouchableOpacity>
+            
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
             onPress={() => setActiveTab('requests')}
           >
@@ -232,22 +248,22 @@ export default function DoctorConnect() {
               Requests
             </Text>
           </TouchableOpacity>
-          
-        <TouchableOpacity 
+            
+          <TouchableOpacity 
             style={[styles.tab, activeTab === 'patientId' && styles.activeTab]}
             onPress={() => setActiveTab('patientId')}
           >
             <Text style={[styles.tabText, activeTab === 'patientId' && styles.activeTabText]}>
-              My Patient ID
-          </Text>
-        </TouchableOpacity>
-      </View>
+              Patient ID
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Tab Content */}
         {activeTab === 'current' && renderCurrentDoctor()}
         {activeTab === 'search' && renderDoctorSearch()}
         {activeTab === 'requests' && renderConnectionRequests()}
-        {activeTab === 'patientId' && <PatientIdDisplay />}
+        {activeTab === 'patientId' && renderPatientId()}
       </ScrollView>
     </ThemedView>
   );
@@ -256,33 +272,39 @@ export default function DoctorConnect() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#EBF8FF',
   },
   scrollView: {
     flex: 1,
     padding: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#1f2937',
+    color: '#1E293B',
+    textAlign: 'center',
+    marginTop: 20,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: 18,
+    color: '#64748B',
     marginBottom: 24,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#EBF8FF',
     borderRadius: 12,
     padding: 4,
     marginBottom: 24,
+    marginHorizontal: 8,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -291,144 +313,149 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6b7280',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
   },
   activeTabText: {
-    color: '#2563eb',
+    color: '#2563EB',
+    fontWeight: 'bold',
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#1f2937',
+    color: '#1E293B',
   },
-  doctorCard: {
+  connectedDoctorCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 4,
   },
   doctorInfo: {
     flexDirection: 'row',
     marginBottom: 16,
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#dbeafe',
+  doctorAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EBF8FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#2563EB',
   },
   doctorDetails: {
     flex: 1,
   },
-  doctorName: {
-    fontSize: 18,
+  connectedDoctorName: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#1E293B',
     marginBottom: 4,
   },
-  doctorSpecialty: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 2,
-  },
-  doctorHospital: {
-    fontSize: 14,
-    color: '#6b7280',
+  connectedStatus: {
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: '600',
     marginBottom: 8,
   },
-  doctorStatus: {
-    fontSize: 14,
-    color: '#059669',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  doctorNote: {
-    fontSize: 14,
+  connectedNote: {
+    fontSize: 16,
     color: '#374151',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   removeButton: {
-    backgroundColor: '#ef4444',
-    paddingVertical: 12,
+    backgroundColor: '#EF4444',
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
   },
   removeButtonText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 18,
   },
   noDoctorCard: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: '#E2E8F0',
     borderStyle: 'dashed',
   },
-  noDoctorText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6b7280',
+  noDoctorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#64748B',
     marginBottom: 8,
   },
   noDoctorSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: 16,
+    color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   searchContainer: {
     flexDirection: 'row',
-    gap: 12,
     marginBottom: 16,
   },
-  searchInput: {
+  searchInputContainer: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
     backgroundColor: 'white',
+    borderRadius: 12,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  searchInput: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 18,
+    color: '#1E293B',
   },
   searchButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
     justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#9CA3AF',
   },
   searchButtonText: {
     color: 'white',
@@ -439,37 +466,52 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   resultsTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#374151',
     marginBottom: 16,
   },
   doctorResultCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  doctorName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  doctorSpecialty: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  doctorHospital: {
+    fontSize: 14,
+    color: '#94A3B8',
   },
   connectButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 12,
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 16,
   },
   connectButtonText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 18,
   },
   loadingContainer: {
     flex: 1,
@@ -477,7 +519,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: 18,
+    color: '#64748B',
+    marginTop: 16,
   },
 });

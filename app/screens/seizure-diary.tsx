@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as MediaLibrary from 'expo-media-library';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSeizures } from '../../hooks/useSeizures';
 import { CreateSeizureData, Seizure } from '../../services/seizureService';
@@ -136,6 +137,44 @@ export default function SeizureDiaryScreen() {
     setVideoUrl(seizure.videoUrl || '');
     setSelectedVideo(null); // Clear selected video when editing
     setActiveTab('log');
+  };
+
+  const handleRecordVideo = async () => {
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera access to record videos.');
+        return;
+      }
+
+      // Launch camera to record video
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.8,
+        videoMaxDuration: 300, // 5 minutes max
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const videoFile = result.assets[0];
+        setSelectedVideo({
+          name: `seizure_video_${Date.now()}.mp4`,
+          uri: videoFile.uri,
+          size: videoFile.fileSize || 0
+        });
+        setVideoUrl(videoFile.uri);
+        
+        Alert.alert(
+          'Video Recorded',
+          `Video recorded successfully!\nDuration: ${videoFile.duration ? Math.round(videoFile.duration / 1000) : 'Unknown'} seconds`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error recording video:', error);
+      Alert.alert('Error', 'Failed to record video. Please try again.');
+    }
   };
 
   const handleVideoSelection = async () => {
@@ -394,6 +433,18 @@ export default function SeizureDiaryScreen() {
             </View>
           </View>
 
+          {/* Record Video Section */}
+          <View className="mb-6">
+            <Text className="text-xl font-semibold text-slate-800 mb-3">Record Video</Text>
+            <TouchableOpacity
+              className="bg-red-500 rounded-xl p-4 flex-row items-center justify-center shadow-sm"
+              onPress={handleRecordVideo}
+            >
+              <Ionicons name="videocam" size={24} color="white" />
+              <Text className="text-white font-semibold text-lg ml-2">Record Seizure Video</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Notes Field - Completely Isolated */}
           <View className="mb-6">
             <Text className="text-xl font-semibold text-slate-800 mb-3">Notes</Text>
@@ -425,76 +476,7 @@ export default function SeizureDiaryScreen() {
           </View>
 
           {/* Video Attachment Section */}
-          <View className="mb-6">
-            <Text className="text-xl font-semibold text-slate-800 mb-3">Video Attachment (Optional)</Text>
-            
-            {selectedVideo ? (
-              <View className="bg-green-50 rounded-xl p-5 mb-3 border border-green-200">
-                <View className="flex-row items-center mb-2">
-                  <Ionicons name="videocam" size={24} color="#10B981" />
-                  <Text className="text-green-800 font-semibold ml-2 flex-1" numberOfLines={1}>
-                    {selectedVideo.name}
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setSelectedVideo(null);
-                      setVideoUrl('');
-                    }}
-                    className="p-2"
-                  >
-                    <Ionicons name="close-circle" size={24} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-                <Text className="text-green-600 text-sm">
-                  Size: {(selectedVideo.size / (1024 * 1024)).toFixed(2)} MB
-                </Text>
-              </View>
-            ) : (
-              <View className="bg-white rounded-xl p-5 shadow-sm mb-3">
-                <TextInput
-                  ref={videoUrlRef}
-                  style={{
-                    fontSize: 18,
-                    color: '#1E293B',
-                    flex: 1,
-                    padding: 0,
-                    margin: 0
-                  }}
-                  value={videoUrl}
-                  onChangeText={(text) => {
-                    console.log('Video URL changed:', text);
-                    setVideoUrl(text);
-                  }}
-                  placeholder="Or enter video URL manually"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="url"
-                  returnKeyType="done"
-                />
-              </View>
-            )}
-            
-            <TouchableOpacity 
-              className="bg-blue-500 rounded-xl p-5 flex-row items-center justify-center mb-2"
-              onPress={handleVideoSelection}
-            >
-              <Ionicons name="folder-open" size={28} color="white" />
-              <Text className="text-white text-lg font-semibold ml-3">Select Video from Files</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              className="bg-purple-500 rounded-xl p-5 flex-row items-center justify-center"
-              onPress={() => {
-                Alert.alert(
-                  'Camera Feature',
-                  'Video recording functionality will be available in a future update. For now, you can select existing videos from your device.',
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Ionicons name="camera" size={28} color="white" />
-              <Text className="text-white text-lg font-semibold ml-3">Record New Video</Text>
-            </TouchableOpacity>
-          </View>
+          
 
           {/* Action Buttons */}
           <View className="flex-row justify-between mt-6 mb-12">

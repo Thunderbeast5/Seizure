@@ -6,7 +6,7 @@ import {
     TrashIcon,
     UserIcon
 } from '@heroicons/react/24/outline';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { patientDataService, PatientMedication, PatientProfile, PatientSeizure } from '../services/patientDataService';
 
 interface PatientManagementProps {
@@ -26,26 +26,34 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
   const [editingSeizure, setEditingSeizure] = useState<PatientSeizure | null>(null);
   const [editingMedication, setEditingMedication] = useState<PatientMedication | null>(null);
 
-  const loadPatientData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await patientDataService.getCompletePatientData(patientId);
-      setPatientData(data);
-    } catch (error) {
-      console.error('Error loading patient data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [patientId]);
-
   useEffect(() => {
-    loadPatientData();
-  }, [loadPatientData]);
+    setLoading(true);
+    
+    // Set up real-time listeners for all patient data
+    const unsubscribeProfile = patientDataService.subscribeToPatientProfile(patientId, (profile) => {
+      setPatientData(prev => prev ? { ...prev, profile } : { profile, seizures: [], medications: [] });
+    });
+
+    const unsubscribeSeizures = patientDataService.subscribeToPatientSeizures(patientId, (seizures) => {
+      setPatientData(prev => prev ? { ...prev, seizures } : { profile: null, seizures, medications: [] });
+    });
+
+    const unsubscribeMedications = patientDataService.subscribeToPatientMedications(patientId, (medications) => {
+      setPatientData(prev => prev ? { ...prev, medications } : { profile: null, seizures: [], medications });
+      setLoading(false); // Set loading to false after first data load
+    });
+
+    // Cleanup function to unsubscribe from all listeners
+    return () => {
+      unsubscribeProfile();
+      unsubscribeSeizures();
+      unsubscribeMedications();
+    };
+  }, [patientId]);
 
   const handleAddSeizure = async (seizureData: Omit<PatientSeizure, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     try {
       await patientDataService.addPatientSeizure(patientId, seizureData);
-      await loadPatientData();
       setShowAddSeizure(false);
     } catch (error) {
       console.error('Error adding seizure:', error);
@@ -55,7 +63,6 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
   const handleAddMedication = async (medicationData: Omit<PatientMedication, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     try {
       await patientDataService.addPatientMedication(patientId, medicationData);
-      await loadPatientData();
       setShowAddMedication(false);
     } catch (error) {
       console.error('Error adding medication:', error);
@@ -66,7 +73,6 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
     if (!editingSeizure?.id) return;
     try {
       await patientDataService.updatePatientSeizure(editingSeizure.id, seizureData);
-      await loadPatientData();
       setEditingSeizure(null);
     } catch (error) {
       console.error('Error updating seizure:', error);
@@ -77,7 +83,6 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
     if (!editingMedication?.id) return;
     try {
       await patientDataService.updatePatientMedication(editingMedication.id, medicationData);
-      await loadPatientData();
       setEditingMedication(null);
     } catch (error) {
       console.error('Error updating medication:', error);
@@ -88,7 +93,6 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
     if (window.confirm('Are you sure you want to delete this seizure record?')) {
       try {
         await patientDataService.deletePatientSeizure(seizureId);
-        await loadPatientData();
       } catch (error) {
         console.error('Error deleting seizure:', error);
       }
@@ -99,7 +103,6 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
     if (window.confirm('Are you sure you want to delete this medication?')) {
       try {
         await patientDataService.deletePatientMedication(medicationId);
-        await loadPatientData();
       } catch (error) {
         console.error('Error deleting medication:', error);
       }

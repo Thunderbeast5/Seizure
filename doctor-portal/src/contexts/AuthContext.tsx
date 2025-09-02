@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase.config';
+import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, getIdToken } from 'firebase/auth';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../firebase.config';
 
 interface DoctorData {
   name: string;
@@ -28,6 +29,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>;
   register: (data: DoctorRegistrationData) => Promise<void>;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<string | undefined>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,20 +48,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // Set persistence to local storage for session persistence
+    setPersistence(auth, browserLocalPersistence).then(() => {
+      console.log('Auth persistence set to local');
+    }).catch((error) => {
+      console.error('Error setting auth persistence:', error);
+    });
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
       if (user) {
-        // For now, set mock doctor data. In a real app, you'd fetch this from Firestore
-        setDoctorData({
-          name: 'Dr. ' + (user.email?.split('@')[0] || 'Doctor'),
-          specialty: 'Neurologist',
-          hospital: 'General Hospital',
-          phone: '+1 (555) 123-4567',
-          licenseNumber: 'MD123456'
-        });
+        try {
+          // Always set mock data first to prevent loading state
+          setDoctorData({
+            name: 'Dr. ' + (user.email?.split('@')[0] || 'Doctor'),
+            specialty: 'Neurologist',
+            hospital: 'General Hospital',
+            phone: '+1 (555) 123-4567',
+            licenseNumber: 'MD123456'
+          });
+          
+          // Then try to fetch real doctor data from Firestore
+          const doctorDocRef = doc(db, 'doctors', user.uid);
+          const doctorDoc = await getDoc(doctorDocRef);
+          
+          if (doctorDoc.exists()) {
+            const doctorInfo = doctorDoc.data() as DoctorData;
+            setDoctorData(doctorInfo);
+            
+            // Set up real-time listener for doctor data updates
+            onSnapshot(doctorDocRef, (doc) => {
+              if (doc.exists()) {
+                setDoctorData(doc.data() as DoctorData);
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching doctor data:', error);
+          // Keep the mock data that was already set
+        }
       } else {
         setDoctorData(null);
       }
+      
+      // Always set loading to false after processing
       setLoading(false);
     });
 
@@ -90,6 +123,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signOut(auth);
   };
 
+  const refreshToken = async () => {
+    if (user) {
+      try {
+        const token = await getIdToken(user, true); // Force refresh
+        console.log('Token refreshed successfully');
+        return token;
+      } catch (error) {
+        console.error('Error refreshing token:', error);
+        throw error;
+      }
+    }
+  };
+
   const value: AuthContextType = {
     user,
     doctorData,
@@ -98,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     register,
     logout,
+    refreshToken,
   };
 
   return (

@@ -6,9 +6,12 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  getIdToken
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase.config';
 
 interface UserData {
@@ -30,6 +33,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<string | undefined>;
 }
 
 interface RegisterData {
@@ -65,33 +69,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Set persistence to local storage for session persistence
+    setPersistence(auth, browserLocalPersistence).then(() => {
+      console.log('Auth persistence set to local');
+    }).catch((error) => {
+      console.error('Error setting auth persistence:', error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user?.uid);
       setUser(user);
       
       if (user) {
-        // Fetch additional user data from Firestore
         try {
-          console.log('Fetching user data for:', user.uid);
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data() as UserData;
-            console.log('User data fetched:', data);
-            setUserData(data);
-          } else {
-            console.log('No user document found');
+          console.log('Setting up real-time listener for user data:', user.uid);
+          const userDocRef = doc(db, 'users', user.uid);
+          
+          // Set up real-time listener for user data
+          const unsubscribeUserData = onSnapshot(userDocRef, (doc) => {
+            if (doc.exists()) {
+              const data = doc.data() as UserData;
+              console.log('User data updated:', data);
+              setUserData(data);
+            } else {
+              console.log('No user document found');
+              setUserData(null);
+            }
+            setLoading(false);
+          }, (error) => {
+            console.error('Error in user data real-time listener:', error);
             setUserData(null);
-          }
+            setLoading(false);
+          });
+          
+          // Store unsubscribe function for cleanup
+          return () => unsubscribeUserData();
         } catch (error) {
-          console.error('Error fetching user data:', error);
-          // Don't throw error here, just log it
+          console.error('Error setting up user data listener:', error);
           setUserData(null);
+          setLoading(false);
         }
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return unsubscribe;
@@ -167,13 +188,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshToken = async () => {
+    if (user) {
+      try {
+        const token = await getIdToken(user, true); // Force refresh
+        console.log('Token refreshed successfully');
+        return token;
+      } catch (error) {
+        console.error('Error refreshing token:', error);
+        throw error;
+      }
+    }
+  };
+
   const value: AuthContextType = {
     user,
     userData,
     loading,
     login,
     register,
-    logout
+    logout,
+    refreshToken
   };
 
   return (

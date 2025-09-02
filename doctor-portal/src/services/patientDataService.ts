@@ -8,7 +8,10 @@ import {
     query,
     serverTimestamp,
     updateDoc,
-    where
+    where,
+    onSnapshot,
+    orderBy,
+    Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase.config';
 
@@ -60,6 +63,70 @@ class PatientDataService {
   private seizuresCollection = 'seizures';
   private medicationsCollection = 'medications';
   private profilesCollection = 'profiles';
+
+  // ===== REAL-TIME LISTENERS =====
+
+  // Real-time listener for patient seizures
+  subscribeToPatientSeizures(patientId: string, callback: (seizures: PatientSeizure[]) => void): Unsubscribe {
+    const seizuresQuery = query(
+      collection(db, this.seizuresCollection),
+      where('userId', '==', patientId),
+      orderBy('date', 'desc')
+    );
+    
+    return onSnapshot(seizuresQuery, (querySnapshot) => {
+      const seizures: PatientSeizure[] = [];
+      querySnapshot.forEach((doc) => {
+        seizures.push({
+          id: doc.id,
+          ...doc.data()
+        } as PatientSeizure);
+      });
+      callback(seizures);
+    }, (error) => {
+      console.error('Error in seizures real-time listener:', error);
+    });
+  }
+
+  // Real-time listener for patient medications
+  subscribeToPatientMedications(patientId: string, callback: (medications: PatientMedication[]) => void): Unsubscribe {
+    const medicationsQuery = query(
+      collection(db, this.medicationsCollection),
+      where('userId', '==', patientId),
+      orderBy('startDate', 'desc')
+    );
+    
+    return onSnapshot(medicationsQuery, (querySnapshot) => {
+      const medications: PatientMedication[] = [];
+      querySnapshot.forEach((doc) => {
+        medications.push({
+          id: doc.id,
+          ...doc.data()
+        } as PatientMedication);
+      });
+      callback(medications);
+    }, (error) => {
+      console.error('Error in medications real-time listener:', error);
+    });
+  }
+
+  // Real-time listener for patient profile
+  subscribeToPatientProfile(patientId: string, callback: (profile: PatientProfile | null) => void): Unsubscribe {
+    const profileDocRef = doc(db, this.profilesCollection, patientId);
+    
+    return onSnapshot(profileDocRef, (doc) => {
+      if (doc.exists()) {
+        callback({
+          id: doc.id,
+          ...doc.data()
+        } as PatientProfile);
+      } else {
+        callback(null);
+      }
+    }, (error) => {
+      console.error('Error in profile real-time listener:', error);
+    });
+  }
 
   // ===== SEIZURE CRUD OPERATIONS =====
 

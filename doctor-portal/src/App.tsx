@@ -1,40 +1,62 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
-import { Dashboard } from './components/Dashboard';
-import { Login } from './components/Login';
-import { Register } from './components/Register';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-
-const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
-  const [showLogin, setShowLogin] = useState(true);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-medical-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return showLogin ? (
-      <Login onSwitchToRegister={() => setShowLogin(false)} />
-    ) : (
-      <Register onSwitchToLogin={() => setShowLogin(true)} />
-    );
-  }
-
-  return <Dashboard />;
-};
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { PublicRoute } from './components/PublicRoute';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { PatientPage } from './pages/PatientPage';
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <Router>
+        <Routes>
+          {/* Public Routes - redirect to dashboard if authenticated */}
+          <Route 
+            path="/login" 
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/register" 
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            } 
+          />
+
+          {/* Protected Routes - require authentication */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/patient/:patientId" 
+            element={
+              <ProtectedRoute>
+                <PatientPage />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Catch all - redirect to dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
     </AuthProvider>
   );
 }
