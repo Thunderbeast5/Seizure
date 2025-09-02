@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -264,16 +266,20 @@ export default function SeizureDiaryScreen() {
 
   const renderLogTab = () => {
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView 
-          className="flex-1 p-4"
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="always"
-          nestedScrollEnabled={true}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
+          <ScrollView 
+            className="flex-1 p-4"
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
+            contentContainerStyle={{ paddingBottom: 50 }}
+            scrollEventThrottle={16}
+          >
           {/* Header */}
           <View className="mb-6">
             <Text className="text-2xl font-bold text-slate-800 mb-4 text-center">
@@ -354,6 +360,7 @@ export default function SeizureDiaryScreen() {
                 returnKeyType="next"
                 onSubmitEditing={() => triggersRef.current?.focus()}
                 clearButtonMode="while-editing"
+                blurOnSubmit={false}
               />
             </View>
             <Text className="text-sm text-gray-500 mt-1">Enter duration in seconds (numbers only)</Text>
@@ -382,6 +389,7 @@ export default function SeizureDiaryScreen() {
                 returnKeyType="next"
                 onSubmitEditing={() => notesRef.current?.focus()}
                 clearButtonMode="while-editing"
+                blurOnSubmit={false}
               />
             </View>
           </View>
@@ -519,6 +527,7 @@ export default function SeizureDiaryScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
     );
   };
 
@@ -541,7 +550,7 @@ export default function SeizureDiaryScreen() {
           <Ionicons name="medical-outline" size={64} color="#A0A0A0" />
           <Text className="text-xl font-bold text-gray-600 mt-4 mb-2">No Seizures Logged</Text>
           <Text className="text-lg text-gray-500 text-center mb-6">
-            You haven't logged any seizures yet. Tap the button below to get started.
+            You haven&apos;t logged any seizures yet. Tap the button below to get started.
           </Text>
         </View>
       ) : (

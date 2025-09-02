@@ -106,3 +106,4 @@ async function testPatientSearch() {
 
 // Run the test
 testPatientSearch();
+

@@ -8,13 +8,31 @@ import {
   TextInput,
   Switch,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMedications } from '../../hooks/useMedications';
 import { CreateMedicationData, Medication } from '../../services/medicationService';
+
+// Define frequency options
+const FREQUENCY_OPTIONS = [
+  'Once daily',
+  'Twice daily', 
+  'Three times daily',
+  'Four times daily',
+  'Every 6 hours',
+  'Every 8 hours',
+  'Every 12 hours',
+  'As needed',
+  'Custom'
+];
+
+// Define dosage amounts for scroll picker
+const DOSAGE_AMOUNTS = [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 175, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000];
+const DOSAGE_UNITS = ['mg', 'g', 'ml', 'tablets', 'capsules', 'drops', 'puffs'];
 
 export default function MedicationsScreen() {
   const navigation = useNavigation();
@@ -38,6 +56,16 @@ export default function MedicationsScreen() {
   const [frequency, setFrequency] = useState('');
   const [times, setTimes] = useState(['08:00']);
   const [notes, setNotes] = useState('');
+  
+  // Modal states
+  const [showDosagePicker, setShowDosagePicker] = useState(false);
+  const [showFrequencyPicker, setShowFrequencyPicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
+  
+  // Dosage picker state
+  const [selectedAmount, setSelectedAmount] = useState(1);
+  const [selectedUnit, setSelectedUnit] = useState('mg');
 
   const handleSaveMedication = async () => {
     if (!user?.uid) {
@@ -163,6 +191,34 @@ export default function MedicationsScreen() {
       newTimes.splice(index, 1);
       setTimes(newTimes);
     }
+  };
+
+  const handleDosageSelect = () => {
+    setDosage(`${selectedAmount} ${selectedUnit}`);
+    setShowDosagePicker(false);
+  };
+
+  const handleFrequencySelect = (freq: string) => {
+    setFrequency(freq);
+    setShowFrequencyPicker(false);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    const newTimes = [...times];
+    newTimes[selectedTimeIndex] = time;
+    setTimes(newTimes);
+    setShowTimePicker(false);
+  };
+
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        options.push(timeString);
+      }
+    }
+    return options;
   };
 
 
@@ -342,35 +398,41 @@ export default function MedicationsScreen() {
 
       <View className="mb-6">
         <Text className="text-xl font-medium text-slate-800 mb-3">Dosage*</Text>
-        <View className="bg-white rounded-xl p-5 shadow-sm">
-          <TextInput
-            className="text-lg text-slate-800 flex-1"
-            value={dosage}
-            onChangeText={setDosage}
-            placeholder="e.g., 500mg"
-            placeholderTextColor="#A0A0A0"
-          />
-        </View>
+        <TouchableOpacity 
+          className="bg-white rounded-xl p-5 shadow-sm flex-row items-center justify-between"
+          onPress={() => setShowDosagePicker(true)}
+        >
+          <Text className={`text-lg flex-1 ${dosage ? 'text-slate-800' : 'text-gray-400'}`}>
+            {dosage || 'Select dosage'}
+          </Text>
+          <Ionicons name="chevron-down" size={24} color="#4A90E2" />
+        </TouchableOpacity>
       </View>
 
       <View className="mb-6">
         <Text className="text-xl font-medium text-slate-800 mb-3">Frequency*</Text>
-        <View className="bg-white rounded-xl p-5 shadow-sm">
-          <TextInput
-            className="text-lg text-slate-800 flex-1"
-            value={frequency}
-            onChangeText={setFrequency}
-            placeholder="e.g., Twice daily"
-            placeholderTextColor="#A0A0A0"
-          />
-        </View>
+        <TouchableOpacity 
+          className="bg-white rounded-xl p-5 shadow-sm flex-row items-center justify-between"
+          onPress={() => setShowFrequencyPicker(true)}
+        >
+          <Text className={`text-lg flex-1 ${frequency ? 'text-slate-800' : 'text-gray-400'}`}>
+            {frequency || 'Select frequency'}
+          </Text>
+          <Ionicons name="chevron-down" size={24} color="#4A90E2" />
+        </TouchableOpacity>
       </View>
 
       <View className="mb-6">
         <Text className="text-xl font-medium text-slate-800 mb-3">Reminder Times*</Text>
         {times.map((time, index) => (
           <View key={index} className="flex-row items-center mb-3">
-            <TouchableOpacity className="bg-white rounded-xl p-5 flex-row items-center justify-between shadow-sm flex-1">
+            <TouchableOpacity 
+              className="bg-white rounded-xl p-5 flex-row items-center justify-between shadow-sm flex-1"
+              onPress={() => {
+                setSelectedTimeIndex(index);
+                setShowTimePicker(true);
+              }}
+            >
               <Text className="text-lg text-slate-800">{time}</Text>
               <Ionicons name="time" size={28} color="#4A90E2" />
             </TouchableOpacity>
@@ -465,6 +527,151 @@ export default function MedicationsScreen() {
       </View>
 
       {showAddForm ? renderAddForm() : renderMedicationList()}
+      
+      {/* Dosage Picker Modal */}
+      <Modal visible={showDosagePicker} transparent={true} animationType="slide">
+        <TouchableOpacity 
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'transparent' }}
+          activeOpacity={1}
+          onPress={() => setShowDosagePicker(false)}
+        >
+          <TouchableOpacity 
+            className="bg-white rounded-t-3xl p-6 max-h-96"
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar for visual indication */}
+            <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
+            
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-slate-800">Select Dosage</Text>
+              <TouchableOpacity onPress={() => setShowDosagePicker(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <View className="flex-row mb-6">
+              <View className="flex-1 mr-2">
+                <Text className="text-lg font-medium text-slate-800 mb-2">Amount</Text>
+                <ScrollView className="h-32 bg-gray-50 rounded-lg" showsVerticalScrollIndicator={false}>
+                  {DOSAGE_AMOUNTS.map((amount) => (
+                    <TouchableOpacity
+                      key={amount}
+                      className={`p-3 ${selectedAmount === amount ? 'bg-blue-100' : ''}`}
+                      onPress={() => setSelectedAmount(amount)}
+                    >
+                      <Text className={`text-center ${selectedAmount === amount ? 'text-blue-600 font-bold' : 'text-slate-800'}`}>
+                        {amount}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View className="flex-1 ml-2">
+                <Text className="text-lg font-medium text-slate-800 mb-2">Unit</Text>
+                <ScrollView className="h-32 bg-gray-50 rounded-lg" showsVerticalScrollIndicator={false}>
+                  {DOSAGE_UNITS.map((unit) => (
+                    <TouchableOpacity
+                      key={unit}
+                      className={`p-3 ${selectedUnit === unit ? 'bg-blue-100' : ''}`}
+                      onPress={() => setSelectedUnit(unit)}
+                    >
+                      <Text className={`text-center ${selectedUnit === unit ? 'text-blue-600 font-bold' : 'text-slate-800'}`}>
+                        {unit}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              className="bg-blue-600 rounded-xl p-4 items-center"
+              onPress={handleDosageSelect}
+            >
+              <Text className="text-white text-lg font-medium">Select {selectedAmount} {selectedUnit}</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+      
+      {/* Frequency Picker Modal */}
+      <Modal visible={showFrequencyPicker} transparent={true} animationType="slide">
+        <TouchableOpacity 
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'transparent' }}
+          activeOpacity={1}
+          onPress={() => setShowFrequencyPicker(false)}
+        >
+          <TouchableOpacity 
+            className="bg-white rounded-t-3xl p-6 max-h-96"
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar for visual indication */}
+            <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
+            
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-slate-800">Select Frequency</Text>
+              <TouchableOpacity onPress={() => setShowFrequencyPicker(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView className="max-h-64" showsVerticalScrollIndicator={false}>
+              {FREQUENCY_OPTIONS.map((freq) => (
+                <TouchableOpacity
+                  key={freq}
+                  className="p-4 border-b border-gray-100"
+                  onPress={() => handleFrequencySelect(freq)}
+                >
+                  <Text className="text-lg text-slate-800">{freq}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+      
+      {/* Time Picker Modal */}
+      <Modal visible={showTimePicker} transparent={true} animationType="slide">
+        <TouchableOpacity 
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'transparent' }}
+          activeOpacity={1}
+          onPress={() => setShowTimePicker(false)}
+        >
+          <TouchableOpacity 
+            className="bg-white rounded-t-3xl p-6 max-h-96"
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar for visual indication */}
+            <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
+            
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-slate-800">Select Time</Text>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView className="max-h-64" showsVerticalScrollIndicator={false}>
+              {generateTimeOptions().map((time) => (
+                <TouchableOpacity
+                  key={time}
+                  className="p-4 border-b border-gray-100"
+                  onPress={() => handleTimeSelect(time)}
+                >
+                  <Text className="text-lg text-slate-800">{time}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }

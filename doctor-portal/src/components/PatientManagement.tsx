@@ -23,6 +23,8 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
   const [loading, setLoading] = useState(true);
   const [showAddSeizure, setShowAddSeizure] = useState(false);
   const [showAddMedication, setShowAddMedication] = useState(false);
+  const [editingSeizure, setEditingSeizure] = useState<PatientSeizure | null>(null);
+  const [editingMedication, setEditingMedication] = useState<PatientMedication | null>(null);
 
   const loadPatientData = useCallback(async () => {
     try {
@@ -57,6 +59,28 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
       setShowAddMedication(false);
     } catch (error) {
       console.error('Error adding medication:', error);
+    }
+  };
+
+  const handleEditSeizure = async (seizureData: Omit<PatientSeizure, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!editingSeizure?.id) return;
+    try {
+      await patientDataService.updatePatientSeizure(editingSeizure.id, seizureData);
+      await loadPatientData();
+      setEditingSeizure(null);
+    } catch (error) {
+      console.error('Error updating seizure:', error);
+    }
+  };
+
+  const handleEditMedication = async (medicationData: Omit<PatientMedication, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    if (!editingMedication?.id) return;
+    try {
+      await patientDataService.updatePatientMedication(editingMedication.id, medicationData);
+      await loadPatientData();
+      setEditingMedication(null);
+    } catch (error) {
+      console.error('Error updating medication:', error);
     }
   };
 
@@ -243,12 +267,18 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-gray-500">Duration:</span>
-                              <span className="ml-2">{seizure.duration || 'Unknown'}</span>
+                              <span className="ml-2">{seizure.duration ? `${seizure.duration} seconds` : 'Unknown'}</span>
                             </div>
                             <div>
                               <span className="text-gray-500">Severity:</span>
                               <span className="ml-2">{seizure.severity || 'Unknown'}</span>
                             </div>
+                            {seizure.triggers && (
+                              <div className="col-span-2">
+                                <span className="text-gray-500">Triggers:</span>
+                                <span className="ml-2">{seizure.triggers}</span>
+                              </div>
+                            )}
                           </div>
                           {seizure.notes && (
                             <p className="text-sm text-gray-600 mt-2">{seizure.notes}</p>
@@ -256,8 +286,18 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
                         </div>
                         <div className="flex space-x-2">
                           <button
+                            onClick={() => setEditingSeizure(seizure)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Edit seizure"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
                             onClick={() => handleDeleteSeizure(seizure.id!)}
                             className="text-red-600 hover:text-red-800"
+                            title="Delete seizure"
                           >
                             <TrashIcon className="w-5 h-5" />
                           </button>
@@ -330,8 +370,18 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
                         </div>
                         <div className="flex space-x-2">
                           <button
+                            onClick={() => setEditingMedication(medication)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Edit medication"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
                             onClick={() => handleDeleteMedication(medication.id!)}
                             className="text-red-600 hover:text-red-800"
+                            title="Delete medication"
                           >
                             <TrashIcon className="w-5 h-5" />
                           </button>
@@ -397,6 +447,15 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
         />
       )}
 
+      {/* Edit Seizure Modal */}
+      {editingSeizure && (
+        <EditSeizureModal
+          seizure={editingSeizure}
+          onClose={() => setEditingSeizure(null)}
+          onSave={handleEditSeizure}
+        />
+      )}
+
       {/* Add Medication Modal */}
       {showAddMedication && (
         <AddMedicationModal
@@ -404,9 +463,28 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
           onSave={handleAddMedication}
         />
       )}
+
+      {/* Edit Medication Modal */}
+      {editingMedication && (
+        <EditMedicationModal
+          medication={editingMedication}
+          onClose={() => setEditingMedication(null)}
+          onSave={handleEditMedication}
+        />
+      )}
     </div>
   );
 };
+
+// Define seizure types for the dropdown (same as mobile)
+const SEIZURE_TYPES = [
+  'Absence (Petit Mal)',
+  'Tonic-Clonic (Grand Mal)',
+  'Myoclonic',
+  'Atonic',
+  'Focal',
+  'Other'
+];
 
 // Add Seizure Modal Component
 const AddSeizureModal: React.FC<{
@@ -415,8 +493,10 @@ const AddSeizureModal: React.FC<{
 }> = ({ onClose, onSave }) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().split(' ')[0].substring(0, 5),
     type: '',
     duration: '',
+    triggers: '',
     severity: '',
     notes: ''
   });
@@ -442,24 +522,48 @@ const AddSeizureModal: React.FC<{
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Type</label>
+            <label className="block text-sm font-medium text-gray-700">Time</label>
             <input
-              type="text"
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              type="time"
+              value={formData.time}
+              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              placeholder="e.g., Tonic-Clonic, Absence"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Duration</label>
+            <label className="block text-sm font-medium text-gray-700">Seizure Type</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              required
+            >
+              <option value="">Select seizure type</option>
+              {SEIZURE_TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Duration (in seconds)</label>
             <input
-              type="text"
+              type="number"
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              placeholder="e.g., 2 minutes"
+              placeholder="e.g., 30, 120, 45"
+              min="1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Triggers (if known)</label>
+            <input
+              type="text"
+              value={formData.triggers}
+              onChange={(e) => setFormData({ ...formData, triggers: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="e.g., missed medication, lack of sleep"
             />
           </div>
           <div>
@@ -498,6 +602,131 @@ const AddSeizureModal: React.FC<{
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Add Seizure
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Edit Seizure Modal Component
+const EditSeizureModal: React.FC<{
+  seizure: PatientSeizure;
+  onClose: () => void;
+  onSave: (data: Omit<PatientSeizure, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+}> = ({ seizure, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    date: seizure.date || new Date().toISOString().split('T')[0],
+    time: seizure.time || new Date().toTimeString().split(' ')[0].substring(0, 5),
+    type: seizure.type || '',
+    duration: seizure.duration || '',
+    triggers: seizure.triggers || '',
+    severity: seizure.severity || '',
+    notes: seizure.notes || ''
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Seizure Record</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date</label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Time</label>
+            <input
+              type="time"
+              value={formData.time}
+              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Seizure Type</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              required
+            >
+              <option value="">Select seizure type</option>
+              {SEIZURE_TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Duration (in seconds)</label>
+            <input
+              type="number"
+              value={formData.duration}
+              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="e.g., 30, 120, 45"
+              min="1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Triggers (if known)</label>
+            <input
+              type="text"
+              value={formData.triggers}
+              onChange={(e) => setFormData({ ...formData, triggers: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="e.g., missed medication, lack of sleep"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Severity</label>
+            <select
+              value={formData.severity}
+              onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              <option value="">Select severity</option>
+              <option value="Mild">Mild</option>
+              <option value="Moderate">Moderate</option>
+              <option value="Severe">Severe</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              rows={3}
+              placeholder="Additional notes..."
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Update Seizure
             </button>
           </div>
         </form>
@@ -618,6 +847,127 @@ const AddMedicationModal: React.FC<{
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Add Medication
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Edit Medication Modal Component
+const EditMedicationModal: React.FC<{
+  medication: PatientMedication;
+  onClose: () => void;
+  onSave: (data: Omit<PatientMedication, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+}> = ({ medication, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: medication.name || '',
+    dosage: medication.dosage || '',
+    frequency: medication.frequency || '',
+    startDate: medication.startDate || new Date().toISOString().split('T')[0],
+    endDate: medication.endDate || '',
+    notes: medication.notes || '',
+    isActive: medication.isActive !== undefined ? medication.isActive : true
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Medication</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Medication Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="e.g., Levetiracetam"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Dosage</label>
+            <input
+              type="text"
+              value={formData.dosage}
+              onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="e.g., 500mg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Frequency</label>
+            <input
+              type="text"
+              value={formData.frequency}
+              onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="e.g., Twice daily"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <input
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">End Date (Optional)</label>
+            <input
+              type="date"
+              value={formData.endDate}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              rows={3}
+              placeholder="Additional notes..."
+            />
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActiveEdit"
+              checked={formData.isActive}
+              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isActiveEdit" className="ml-2 block text-sm text-gray-900">
+              Active medication
+            </label>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Update Medication
             </button>
           </div>
         </form>

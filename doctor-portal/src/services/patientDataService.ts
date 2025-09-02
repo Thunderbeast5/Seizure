@@ -16,8 +16,10 @@ export interface PatientSeizure {
   id?: string;
   userId: string;
   date: string;
+  time?: string;
   type: string;
   duration?: string;
+  triggers?: string;
   severity?: string;
   notes?: string;
   createdAt?: any;

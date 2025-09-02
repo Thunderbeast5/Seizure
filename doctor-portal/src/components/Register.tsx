@@ -246,3 +246,4 @@ export const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     </div>
   );
 };
+
