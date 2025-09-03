@@ -42,7 +42,7 @@ interface ProfileData {
 }
 
 export default function ProfileScreen() {
-  const { user, userData, logout } = useAuth();
+  // All hooks must be called at the top level
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [activeSection, setActiveSection] = useState('child');
   const [isEditing, setIsEditing] = useState(false);
@@ -50,20 +50,19 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<any>({});
   const [imageError, setImageError] = useState(false);
+  
+  // Get auth context - this must be called at the top level
+  const authContext = useAuth();
+  const { user, userData, logout } = authContext || { user: null, userData: null, logout: () => Promise.resolve() };
 
   // Generate different avatar for each user using Robohash (working option)
   const generateUserAvatar = (userId: string, userName: string) => {
-    // Robohash with different sets for variety
-    const robotSets = ['set1', 'set2', 'set3', 'set4', 'set5'];
-    const setIndex = userId ? userId.charCodeAt(0) % robotSets.length : 0;
-    const selectedSet = robotSets[setIndex];
-    
     // Use user ID as seed for consistent avatars
-return `https://robohash.org/${userName}.png?size=80x80&set=set1`;   
+    return `https://robohash.org/${userName}.png?size=80x80&set=set1`;   
   };
 
-  // Initialize default profile structure
-  const initializeDefaultProfile = (currentUserData: any) => {
+  // Initialize default profile structure - using useCallback to fix lint warning
+  const initializeDefaultProfile = React.useCallback((currentUserData: any) => {
     return {
       child: {
         name: currentUserData?.name || user?.displayName || '',
@@ -87,12 +86,46 @@ return `https://robohash.org/${userName}.png?size=80x80&set=set1`;
         autoBackup: true
       }
     };
-  };
+  }, [user]);
+
+  // Convert UserData format to ProfileData format - using useCallback to avoid recreation
+  const convertUserDataToProfile = React.useCallback((userData: any): ProfileData => {
+    return {
+      child: {
+        name: userData?.name || '',
+        username: userData?.username || '',
+        age: userData?.age || 0,
+        birthDate: userData?.birthDate || '',
+        gender: userData?.gender || '',
+        weight: userData?.weight || '',
+        height: userData?.height || '',
+        bloodType: userData?.bloodGroup || '',
+        seizureType: userData?.seizureType || '',
+        allergies: userData?.allergies || '',
+        email: userData?.email || '',
+        photo: userData?.photo || ''
+      },
+      settings: userData?.settings || {
+        notifications: true,
+        dataSharing: true,
+        locationTracking: true,
+        darkMode: false,
+        autoBackup: true
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let unsubscribe: () => void;
 
     const setupProfileListener = async () => {
+      // Handle case where auth context is not available
+      if (!authContext) {
+        setLoading(false);
+        setError('Authentication not available');
+        return;
+      }
+      
       if (!user) {
         setLoading(false);
         setError('No authenticated user found');
@@ -118,33 +151,26 @@ return `https://robohash.org/${userName}.png?size=80x80&set=set1`;
           doc(db, 'profiles', user.uid),
           async (profileDoc) => {
             if (profileDoc.exists()) {
-              const data = profileDoc.data() as ProfileData;
-              setProfile(data);
+              const data = profileDoc.data();
+              
+              // Check if data has the expected ProfileData structure (with child property)
+              if (data && data.child) {
+                setProfile(data as ProfileData);
+              } else {
+                // Convert UserData format to ProfileData format
+                const convertedProfile = convertUserDataToProfile(data);
+                setProfile(convertedProfile);
+                
+                // Update the document to use the new structure
+                try {
+                  await setDoc(doc(db, 'profiles', user.uid), convertedProfile, { merge: true });
+                } catch (updateError) {
+                  console.error('Error updating profile structure:', updateError);
+                }
+              }
             } else {
               // Create default profile with user data
-              const defaultProfile = {
-                child: {
-                  name: currentUserData?.name || user?.displayName || '',
-                  username: currentUserData?.username || '',
-                  age: currentUserData?.age || 0,
-                  birthDate: '',
-                  gender: currentUserData?.gender || '',
-                  weight: '',
-                  height: '',
-                  bloodType: currentUserData?.bloodGroup || '',
-                  seizureType: currentUserData?.seizureType || '',
-                  allergies: '',
-                  email: currentUserData?.email || user?.email || '',
-                  photo: '' // Empty string, will use local image as fallback
-                },
-                settings: {
-                  notifications: true,
-                  dataSharing: true,
-                  locationTracking: true,
-                  darkMode: false,
-                  autoBackup: true
-                }
-              };
+              const defaultProfile = initializeDefaultProfile(currentUserData);
               
               try {
                 await setDoc(doc(db, 'profiles', user.uid), defaultProfile);
@@ -178,7 +204,7 @@ return `https://robohash.org/${userName}.png?size=80x80&set=set1`;
         unsubscribe();
       }
     };
-  }, [user]);
+  }, [user, userData, authContext, convertUserDataToProfile, initializeDefaultProfile]);
 
   const handleToggleSetting = async (setting: keyof ProfileData['settings']) => {
     if (!user || !profile) return;

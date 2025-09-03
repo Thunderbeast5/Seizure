@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence, getIdToken } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase.config';
 
 interface DoctorData {
@@ -113,10 +113,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (data: DoctorRegistrationData) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-    // Here you could store additional doctor profile data in Firestore
-    // For now, we'll just create the auth account
-    console.log('Doctor registered:', userCredential.user.uid, data);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      
+      // Create doctor profile in Firestore using the user's UID as document ID
+      const doctorData = {
+        email: data.email,
+        name: data.name,
+        specialty: data.specialty,
+        hospital: data.hospital,
+        phone: data.phone,
+        licenseNumber: data.licenseNumber,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      
+      await setDoc(doc(db, 'doctors', userCredential.user.uid), doctorData);
+      console.log('Doctor registered and profile created:', userCredential.user.uid, data);
+    } catch (error) {
+      console.error('Error during doctor registration:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {

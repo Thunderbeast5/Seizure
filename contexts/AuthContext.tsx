@@ -7,12 +7,11 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
-  setPersistence,
-  browserLocalPersistence,
   getIdToken
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase.config';
+import type { Auth } from 'firebase/auth';
 
 interface UserData {
   uid: string;
@@ -52,7 +51,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    console.warn('useAuth called outside of AuthProvider, returning null');
+    return null;
   }
   return context;
 };
@@ -69,12 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Set persistence to local storage for session persistence
-    setPersistence(auth, browserLocalPersistence).then(() => {
-      console.log('Auth persistence set to local');
-    }).catch((error) => {
-      console.error('Error setting auth persistence:', error);
-    });
+    // React Native Firebase Auth has automatic persistence enabled by default
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user?.uid);

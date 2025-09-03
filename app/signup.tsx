@@ -1,7 +1,6 @@
 import { View, Text, TouchableOpacity, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform, Animated, ActivityIndicator } from 'react-native';
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import { BlurView } from 'expo-blur';
 import { useAuth } from '../contexts/AuthContext';
 import { FirebaseError } from 'firebase/app';
 
@@ -68,7 +67,6 @@ const SignUp: React.FC = () => {
   
   // Form validation state
   const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [isValidating, setIsValidating] = useState(false);
   
   // Dropdown states
   const [genderDropdownVisible, setGenderDropdownVisible] = useState(false);
@@ -417,13 +415,11 @@ const SignUp: React.FC = () => {
 
   const handleSignUp = async () => {
     console.log('Starting registration validation...');
-    setIsValidating(true);
     
     // Comprehensive validation
     const isFormValid = validateAllFields();
     
     if (!isFormValid) {
-      setIsValidating(false);
       
       // Find the first error to show
       const firstError = Object.entries(formErrors).find(([_, error]) => error);
@@ -484,7 +480,6 @@ const SignUp: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
-      setIsValidating(false);
     }
   };
 
@@ -536,27 +531,25 @@ const SignUp: React.FC = () => {
         }}
         className="absolute top-full left-0 right-0 z-50 rounded-b-md"
       >
-        <BlurView intensity={80} tint="light" className="rounded-b-md overflow-hidden">
-          <View className="bg-white bg-opacity-90 rounded-b-md border-l border-r border-b border-gray-300">
-            <ScrollView 
-              className="max-h-48"
-              showsVerticalScrollIndicator={false}
-              nestedScrollEnabled={true}
-            >
-              {options.map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  className="px-4 py-3 border-b border-gray-100 active:bg-blue-50"
-                  onPress={() => onSelect(option)}
-                  activeOpacity={0.7}
-                  disabled={isLoading}
-                >
-                  <Text className="text-base text-gray-800">{option}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </BlurView>
+        <View className="bg-white rounded-b-md border-l border-r border-b border-gray-300 shadow-lg">
+          <ScrollView 
+            className="max-h-48"
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            {options.map((option, index) => (
+              <TouchableOpacity
+                key={index}
+                className="px-4 py-3 border-b border-gray-100 active:bg-blue-50"
+                onPress={() => onSelect(option)}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Text className="text-base text-gray-800">{option}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       </Animated.View>
     );
   };
