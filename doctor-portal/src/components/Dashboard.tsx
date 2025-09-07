@@ -221,7 +221,7 @@ export const Dashboard: React.FC = () => {
             body: data.severity ? `Severity: ${data.severity}` : new Date((data.date as string) || Date.now()).toLocaleString(),
             href
           });
-          try { playPing(); } catch {}
+          try { playAlert(5000); } catch {}
         });
       } catch (e) {
         // Non-blocking
@@ -263,7 +263,7 @@ export const Dashboard: React.FC = () => {
               body: s.severity ? `Severity: ${s.severity}` : new Date(s.date).toLocaleString(),
               href
             });
-            try { playPing(); } catch {}
+            try { playAlert(5000); } catch {}
           });
       });
       subscriptionsRef.current.push(unsubscribe);
@@ -275,12 +275,7 @@ export const Dashboard: React.FC = () => {
     };
   }, [patients]);
 
-  // Auto-hide toast
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  // Keep toast visible until explicitly marked read
 
   // Arm audio context on first interaction
   useEffect(() => {
@@ -304,19 +299,38 @@ export const Dashboard: React.FC = () => {
     };
   }, []);
 
-  const playPing = () => {
+  const playAlert = (durationMs: number = 5000) => {
     const ctx = audioCtxRef.current;
     if (!ctx) return;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(880, ctx.currentTime);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-    o.connect(g).connect(ctx.destination);
-    o.start();
-    o.stop(ctx.currentTime + 0.42);
+    const startTime = ctx.currentTime;
+    const endTime = startTime + durationMs / 1000;
+
+    // Sequence soft beeps (880Hz -> 660Hz -> 990Hz) repeating
+    const scheduleBeep = (at: number, freq: number, len: number) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, at);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.18, at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      o.connect(g).connect(ctx.destination);
+      o.start(at);
+      o.stop(at + len + 0.01);
+    };
+
+    let t = startTime;
+    while (t < endTime) {
+      scheduleBeep(t, 880, 0.25);
+      scheduleBeep(t + 0.35, 660, 0.2);
+      scheduleBeep(t + 0.65, 990, 0.25);
+      t += 1.1; // repeat every ~1.1s until duration
+    }
+  };
+
+  const markToastRead = () => {
+    setToast(null);
+    setUnreadCount((c) => (c > 0 ? c - 1 : 0));
   };
 
   const handleLogout = async () => {
@@ -897,16 +911,30 @@ export const Dashboard: React.FC = () => {
                 <div className="flex-1">
                   <div className="font-medium text-gray-900">{toast.title}</div>
                   <div className="text-sm text-gray-600 mt-0.5">{toast.body}</div>
-                  {toast.href && (
+                  <div className="mt-2 flex items-center gap-3">
+                    {toast.href && (
+                      <button
+                        onClick={() => { window.location.href = toast.href!; markToastRead(); }}
+                        className="text-sm text-medical-600 hover:text-medical-900"
+                      >
+                        View details →
+                      </button>
+                    )}
                     <button
-                      onClick={() => { window.location.href = toast.href!; }}
-                      className="mt-2 text-sm text-medical-600 hover:text-medical-900"
+                      onClick={() => { setActiveTab('manage'); markToastRead(); }}
+                      className="text-sm text-blue-600 hover:text-blue-800"
                     >
-                      View details →
+                      Create follow-up
                     </button>
-                  )}
+                    <button
+                      onClick={markToastRead}
+                      className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 </div>
-                <button onClick={() => setToast(null)} className="text-gray-400 hover:text-gray-600">×</button>
+                <button onClick={markToastRead} className="text-gray-400 hover:text-gray-600">×</button>
               </div>
             </div>
           </div>
