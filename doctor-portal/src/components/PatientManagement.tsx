@@ -15,6 +15,7 @@ interface PatientManagementProps {
 
 export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [highlightSeizureId, setHighlightSeizureId] = useState<string | null>(null);
   const [patientData, setPatientData] = useState<{
     profile: PatientProfile | null;
     seizures: PatientSeizure[];
@@ -25,6 +26,15 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
   const [showAddMedication, setShowAddMedication] = useState(false);
   const [editingSeizure, setEditingSeizure] = useState<PatientSeizure | null>(null);
   const [editingMedication, setEditingMedication] = useState<PatientMedication | null>(null);
+
+  // Read deep-link params to focus a specific seizure and switch to the Seizures tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sId = params.get('seizureId');
+    const tab = params.get('tab');
+    if (tab === 'seizures') setActiveTab('seizures');
+    if (sId) setHighlightSeizureId(sId);
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -50,6 +60,15 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
       unsubscribeMedications();
     };
   }, [patientId]);
+
+  // Deep-linking: switch to Seizures tab and highlight a specific seizure if provided in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sId = params.get('seizureId');
+    const tab = params.get('tab');
+    if (tab === 'seizures') setActiveTab('seizures');
+    if (sId) setHighlightSeizureId(sId);
+  }, []);
 
   const handleAddSeizure = async (seizureData: Omit<PatientSeizure, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -118,14 +137,15 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
   }
 
   if (!patientData) {
-    return (
-      <div className="text-center py-8">
-        <div className="text-gray-500">No patient data found</div>
-      </div>
-    );
+    // Still render deep-link effect so hooks order remains consistent
+    // and allow effect to run even during initial loading
   }
 
-  const { profile, seizures, medications } = patientData;
+  const profile = patientData?.profile || null;
+  const seizures = patientData?.seizures || [];
+  const medications = patientData?.medications || [];
+
+  
 
   return (
     <div className="space-y-6">
@@ -258,7 +278,7 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
               ) : (
                 <div className="space-y-3">
                   {seizures.map((seizure) => (
-                    <div key={seizure.id} className="bg-gray-50 rounded-lg p-4">
+                    <div key={seizure.id} className={`bg-gray-50 rounded-lg p-4 ${highlightSeizureId === seizure.id ? 'ring-2 ring-red-400' : ''}`}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
