@@ -466,19 +466,15 @@ export default function SeizureDiaryScreen() {
           <View className="mb-6">
             <Text className="text-xl font-semibold text-slate-800 mb-3">Record Video</Text>
             <TouchableOpacity
-              className={`rounded-xl p-4 flex-row items-center justify-center shadow-sm transition-all duration-300 ${
+              className={`rounded-xl p-4 flex-row items-center justify-center shadow-sm ${
                 videoUploaded 
                   ? 'bg-green-500' 
                   : uploadingVideo 
-                    ? 'bg-blue-500' 
+                    ? 'bg-blue-500 opacity-80' 
                     : 'bg-red-500'
               }`}
               onPress={handleRecordVideo}
               disabled={uploadingVideo}
-              style={{
-                transform: uploadingVideo ? [{ scale: 0.95 }] : [{ scale: 1 }],
-                opacity: uploadingVideo ? 0.8 : 1,
-              }}
             >
               {uploadingVideo ? (
                 <>

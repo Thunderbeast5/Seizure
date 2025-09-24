@@ -1,23 +1,21 @@
 // index.tsx - Updated with multilingual support and fixed RTL handling
 import { Ionicons } from '@expo/vector-icons';
 // Removed BlurView import to fix native module error
+import FloatingChatbot from '@/components/FloatingChatbot';
 import { router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useState } from 'react';
+import { Alert, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { LanguageSelector } from '../../components/ui/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
-import FloatingChatbot from '@/components/FloatingChatbot';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLanguageSelectorVisible, setIsLanguageSelectorVisible] = useState(false);
-  const slideAnimation = useRef(new Animated.Value(-screenWidth * 0.8)).current;
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
   
   // Get language context
-  const { t, isRTL, currentLanguage } = useLanguage();
+  const { t, isRTL } = useLanguage();
 
   // Remove the problematic useEffect for RTL
   // RTL should be handled at the app level, not component level
@@ -25,40 +23,23 @@ export default function HomeScreen() {
   // --- Handler for the menu button ---
   const handleMenuPress = useCallback(() => {
     console.log('Menu button pressed!');
-    setIsDrawerOpen(true);
+    console.log('isDrawerOpen before:', isDrawerOpen);
     
-    // Animate drawer slide in
-    Animated.parallel([
-      Animated.timing(slideAnimation, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [slideAnimation, overlayOpacity]);
+    // Prevent multiple rapid presses
+    if (isDrawerOpen) {
+      console.log('Drawer already open, ignoring press');
+      return;
+    }
+    
+    setIsDrawerOpen(true);
+    console.log('Drawer opened!');
+  }, [isDrawerOpen]);
 
   const closeDrawer = useCallback(() => {
-    // Animate drawer slide out
-    Animated.parallel([
-      Animated.timing(slideAnimation, {
-        toValue: -screenWidth * 0.8,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setIsDrawerOpen(false);
-    });
-  }, [slideAnimation, overlayOpacity]);
+    console.log('Closing drawer...');
+    setIsDrawerOpen(false);
+    console.log('Drawer closed!');
+  }, []);
 
   const handleSeizureDiary = useCallback(() => {
     console.log('Attempting to navigate to seizure diary...');
@@ -116,58 +97,57 @@ export default function HomeScreen() {
     router.replace('/login'); 
   }, []);
 
-  const DrawerMenu = () => (
+  const DrawerMenu = () => {
+    console.log('DrawerMenu rendering, isDrawerOpen:', isDrawerOpen);
+    return (
     <Modal
       visible={isDrawerOpen}
       transparent={true}
-      animationType="none"
+      animationType="fade"
       onRequestClose={closeDrawer}
     >
-      {/* Background Overlay */}
-      <Animated.View 
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: overlayOpacity,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        }}
-      >
-        <TouchableOpacity
-          style={{ flex: 1 }}
-          onPress={closeDrawer}
-          activeOpacity={1}
-        />
-      </Animated.View>
+      <View style={{ flex: 1 }}>
+        {/* Background Overlay */}
+        <View 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1,
+          }}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={closeDrawer}
+            activeOpacity={1}
+          />
+        </View>
 
-      {/* Drawer Content */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          left: isRTL ? undefined : 0,
-          right: isRTL ? 0 : undefined,
-          top: 0,
-          bottom: 0,
-          width: screenWidth * 0.9,
-          transform: [{ 
-            translateX: isRTL 
-              ? Animated.multiply(slideAnimation, -1) 
-              : slideAnimation 
-          }],
-        }}
-      >
+        {/* Drawer Content - Slides from left */}
         <View
           style={{
-            flex: 1,
-            paddingTop: Platform.OS === 'ios' ? 50 : 30,
-            paddingHorizontal: 20,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            position: 'absolute',
+            left: isRTL ? 'auto' : 0,
+            right: isRTL ? 0 : 'auto',
+            top: 0,
+            bottom: 0,
+            width: screenWidth * 0.85,
+            zIndex: 2,
+            backgroundColor: 'rgba(255, 255, 255, 0.98)',
             borderTopRightRadius: isRTL ? 0 : 20,
             borderBottomRightRadius: isRTL ? 0 : 20,
             borderTopLeftRadius: isRTL ? 20 : 0,
             borderBottomLeftRadius: isRTL ? 20 : 0,
+            shadowColor: '#000',
+            shadowOffset: { width: isRTL ? -2 : 2, height: 0 },
+            shadowOpacity: 0.25,
+            shadowRadius: 10,
+            elevation: 10,
+            paddingTop: Platform.OS === 'ios' ? 50 : 30,
+            paddingHorizontal: 20,
           }}
         >
           {/* Drawer Header */}
@@ -534,9 +514,10 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </Animated.View>
+      </View>
     </Modal>
-  );
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-blue-50">
