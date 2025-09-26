@@ -4,27 +4,33 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import "../../global.css";
 
 
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <LanguageProvider>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor:'#fff', // A dark color for contrast against the light blue BG
+        tabBarInactiveTintColor: '#fff',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
           position: 'absolute',
-          bottom: 55, // Adjust for vertical positioning from the bottom
-          left: 40,   // Further increased margin to make tab narrower
-          right: 40,  // Further increased margin to make tab narrower
-          height: 80, // Slightly increased height to accommodate larger buttons
-          borderRadius: 100, // Adjusted to maintain pill shape
+          bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 50, 35) : 55,
+          left: 40,
+          right: 40,
+          height: 80,
+          borderRadius: 100,
           backgroundColor: '#1E88E5',
+          borderTopWidth: 0,
+          borderWidth: 0,
           // Platform-specific shadow for a floating effect
           ...Platform.select({
             ios: {
@@ -34,16 +40,21 @@ export default function TabLayout() {
               shadowRadius: 3,
             },
             android: {
-              elevation: 5,
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 6,
             },
           }),
         },
         tabBarIconStyle: {
-          marginTop: 10, // Add some top margin for better spacing
+          marginTop: 10,
+          marginBottom: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 16, // Larger font size for better readability
-          fontWeight: '600', // Semi-bold for better visibility
+          fontSize: 16,
+          fontWeight: '600',
           marginTop: 2,
         },
       }}>
@@ -53,10 +64,10 @@ export default function TabLayout() {
         options={{
           title: 'Reports',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={32} 
-              name={focused ? "chart.bar.fill" : "chart.bar"} 
-              color={color} 
+            <Ionicons 
+              name={focused ? "bar-chart" : "bar-chart-outline"} 
+              size={28} 
+              color={color}
             />
           ),
         }}
@@ -68,17 +79,17 @@ export default function TabLayout() {
           title: '',
           tabBarIcon: ({ color, focused }) => (
             <View style={{
-              width: 120,  // Increased from 100
-              height: 120, // Increased from 100
-              borderRadius: 60, // Adjusted for new size
+              width: Platform.OS === 'android' ? 95 : 120,
+              height: Platform.OS === 'android' ? 95 : 120,
+              borderRadius: Platform.OS === 'android' ? 47.5 : 60,
               backgroundColor: focused ? '#ff4444' : '#ff6666',
               justifyContent: 'center',
               alignItems: 'center',
               position: 'absolute',
-              top: -40, // Centers vertically: -(height/2) + (tabBar height/2) = -(120/2) + (80/2) = -60 + 40 = -20, but we want it more centered so -60
+              top: Platform.OS === 'android' ? -25 : -40,
               left: '50%',
-              marginLeft: -60, // Centers horizontally: -(width/2) = -(120/2) = -60
-              borderWidth: 4,
+              marginLeft: Platform.OS === 'android' ? -47.5 : -60,
+              borderWidth: Platform.OS === 'android' ? 2 : 4,
               borderColor: 'white',
               ...Platform.select({
                 ios: {
@@ -88,18 +99,26 @@ export default function TabLayout() {
                   shadowRadius: 4,
                 },
                 android: {
-                  elevation: 8,
+                  elevation: 12,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
                 },
               }),
             }}>
-              <IconSymbol size={70} name="light.beacon.max.fill" color="white" />
+              <Ionicons 
+                name="warning" 
+                size={60} 
+                color="white" 
+              />
             </View>
           ),
           tabBarLabelStyle: { 
             fontSize: 16,
             fontWeight: 'bold',
             color: '#ff4444',
-            marginTop: -45, // Adjusted for the larger button
+            marginTop: -45,
           },
         }}
       />
@@ -109,10 +128,10 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol 
-              size={32} 
-              name={focused ? "person.circle.fill" : "person.circle"} 
-              color={color} 
+            <Ionicons 
+              name={focused ? "person-circle" : "person-circle-outline"} 
+              size={28} 
+              color={color}
             />
           ),
         }}

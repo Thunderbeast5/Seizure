@@ -85,19 +85,23 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
       Animated.spring(scaleAnim, {
         toValue: 0.9,
         useNativeDriver: true,
-        duration: 100,
+        tension: 300,
+        friction: 10,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         useNativeDriver: true,
-        duration: 100,
+        tension: 300,
+        friction: 10,
       }),
     ]).start();
   };
 
   const toggleChat = () => {
+    console.log('FloatingChatbot: Toggle chat pressed, current state:', isOpen);
     animateButton();
     setIsOpen(!isOpen);
+    console.log('FloatingChatbot: New state will be:', !isOpen);
   };
 
   const sendMessage = async () => {
@@ -119,26 +123,26 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
     }, 100);
 
     try {
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage.text,
-          timestamp: userMessage.timestamp,
-        }),
-      });
+      // Mock responses for demonstration - replace with real API call when ready
+      const mockResponses = [
+        "I understand you're asking about seizures. Can you tell me more about your specific concern?",
+        "For seizure management, it's important to track patterns and triggers. Have you been keeping a seizure diary?",
+        "If you're experiencing frequent seizures, please consult with your healthcare provider immediately.",
+        "Medication adherence is crucial for seizure control. Are you taking your medications as prescribed?",
+        "Stress and lack of sleep can be seizure triggers. Are you getting enough rest?",
+        "I recommend discussing this with your doctor. They can provide personalized medical advice.",
+        "Emergency services should be called if a seizure lasts longer than 5 minutes or if the person is injured.",
+        "Thank you for sharing. Is there anything specific about seizure management you'd like to know more about?"
+      ];
 
-      if (!response.ok) {
-        throw new Error('Failed to get response from chatbot');
-      }
-
-      const data = await response.json();
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+      
+      const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)];
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.response || data.message || 'I apologize, but I couldn\'t process your request.',
+        text: randomResponse,
         isUser: false,
         timestamp: new Date(),
       };
@@ -150,21 +154,16 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
       }, 100);
 
     } catch (error) {
-      console.error('Chatbot API error:', error);
+      console.error('Chatbot error:', error);
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'I\'m sorry, I\'m having trouble connecting right now. Please try again later.',
+        text: 'I\'m sorry, I\'m having trouble right now. Please try again later.',
         isUser: false,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, errorMessage]);
-      
-      Alert.alert(
-        'Connection Error',
-        'Unable to connect to the chatbot service. Please check your internet connection and try again.'
-      );
     } finally {
       setIsLoading(false);
     }
@@ -197,8 +196,10 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
     <Modal
       visible={isOpen}
       transparent={true}
-      animationType="none"
+      animationType={Platform.OS === 'android' ? 'slide' : 'none'}
       onRequestClose={toggleChat}
+      statusBarTranslucent={Platform.OS === 'android'}
+      hardwareAccelerated={Platform.OS === 'android'}
     >
       <View style={{
         flex: 1,

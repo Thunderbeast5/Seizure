@@ -5,6 +5,7 @@ import FloatingChatbot from '@/components/FloatingChatbot';
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LanguageSelector } from '../../components/ui/LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -14,8 +15,32 @@ export default function HomeScreen() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLanguageSelectorVisible, setIsLanguageSelectorVisible] = useState(false);
   
-  // Get language context
+  // Get language context and safe area insets
   const { t, isRTL } = useLanguage();
+  const insets = useSafeAreaInsets();
+  
+  // Standardized card style to ensure all cards are exactly the same size
+  const cardStyle = {
+    backgroundColor: 'white',
+    width: '48%' as const,
+    padding: 28,
+    borderRadius: 16,
+    marginBottom: 24,
+    alignItems: 'center' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    minHeight: 220,
+    maxHeight: 220,
+    justifyContent: 'space-between' as const,
+  };
+  
+  // Debug: Log platform and insets for Android debugging
+  console.log('Platform:', Platform.OS);
+  console.log('Safe area insets:', insets);
+  console.log('Screen width:', screenWidth);
 
   // Remove the problematic useEffect for RTL
   // RTL should be handled at the app level, not component level
@@ -146,8 +171,9 @@ export default function HomeScreen() {
             shadowOpacity: 0.25,
             shadowRadius: 10,
             elevation: 10,
-            paddingTop: Platform.OS === 'ios' ? 50 : 30,
+            paddingTop: Platform.OS === 'ios' ? 50 : Math.max(insets.top + 10, 30),
             paddingHorizontal: 20,
+            paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 20) : 20,
           }}
         >
           {/* Drawer Header */}
@@ -520,18 +546,34 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-blue-50">
+    <SafeAreaView 
+      style={{ 
+        flex: 1, 
+        backgroundColor: '#E6F3F8',
+        paddingTop: Platform.OS === 'android' ? 0 : undefined 
+      }}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
-      <ScrollView className="flex-1 p-4" contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{ 
+          flexGrow: 1,
+          paddingHorizontal: Platform.OS === 'android' ? 12 : 16,
+          paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 110, 130) : 100,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* --- Updated Header --- */}
         <View 
           style={{
             flexDirection: isRTL ? 'row-reverse' : 'row',
             alignItems: 'center',
-            marginTop: 32,
-            marginBottom: 10,
-            paddingHorizontal: 0,
+            marginTop: Platform.OS === 'android' ? Math.max(insets.top + 35, 55) : 32,
+            marginBottom: Platform.OS === 'android' ? 15 : 10,
+            paddingHorizontal: Platform.OS === 'android' ? 12 : 0,
             justifyContent: Platform.OS === 'android' ? 'flex-start' : 'space-between',
+            backgroundColor: Platform.OS === 'android' ? 'transparent' : undefined,
+            width: '100%',
           }}
         >
           {/* Menu Icon */}
@@ -540,29 +582,42 @@ export default function HomeScreen() {
             style={{
               marginRight: Platform.OS === 'android' && !isRTL ? 16 : 0,
               marginLeft: Platform.OS === 'android' && isRTL ? 16 : 0,
+              padding: Platform.OS === 'android' ? 12 : 0,
+              minWidth: Platform.OS === 'android' ? 48 : 32,
+              minHeight: Platform.OS === 'android' ? 48 : 32,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+              borderRadius: Platform.OS === 'android' ? 8 : 0,
             }}
           >
-            <Ionicons name="menu" size={32} color="#4A90E2" />
+            <Ionicons name="menu" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
           </TouchableOpacity>
           
           {/* Title and Subtitle */}
-          <View style={{ alignItems: Platform.OS === 'ios' ? 'center' : (isRTL ? 'flex-end' : 'flex-start') }}>
+          <View style={{ 
+            alignItems: Platform.OS === 'ios' ? 'center' : (isRTL ? 'flex-end' : 'flex-start'),
+            flex: Platform.OS === 'android' ? 1 : 0,
+            paddingHorizontal: Platform.OS === 'android' ? 12 : 0,
+            paddingVertical: Platform.OS === 'android' ? 8 : 0,
+          }}>
             <Text 
               style={{
-                fontSize: 30,
+                fontSize: Platform.OS === 'android' ? 26 : 30,
                 fontWeight: 'bold',
                 color: '#1E293B',
-                textAlign: 'center',
+                textAlign: Platform.OS === 'android' ? (isRTL ? 'right' : 'left') : 'center',
               }}
             >
               {t('seizure_tracker')}
             </Text>
             <Text 
               style={{
-                fontSize: 18,
+                fontSize: Platform.OS === 'android' ? 16 : 18,
                 color: '#64748B',
-                textAlign: 'center',
-                lineHeight: 24,
+                textAlign: Platform.OS === 'android' ? (isRTL ? 'right' : 'left') : 'center',
+                lineHeight: Platform.OS === 'android' ? 22 : 24,
+                marginTop: Platform.OS === 'android' ? 4 : 0,
               }}
             >
               {t('pediatric_seizure_monitoring')}
@@ -573,32 +628,26 @@ export default function HomeScreen() {
           {Platform.OS === 'ios' && <View style={{ width: 32 }} />}
         </View>
 
-        {/* Feature Buttons Grid */}
-        <View 
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            marginTop: 32,
-            paddingBottom: 40,
-          }}
-        >
+        {/* Feature Buttons Grid Container */}
+        <View style={{ 
+          flex: 1, 
+          justifyContent: Platform.OS === 'android' ? 'center' : 'flex-start',
+          marginTop: Platform.OS === 'android' ? 30 : 0,
+          paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
+        }}>
+          <View 
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              marginTop: Platform.OS === 'android' ? 0 : 32,
+              paddingBottom: Platform.OS === 'android' ? 30 : 40,
+              alignItems: Platform.OS === 'android' ? 'center' : 'flex-start',
+            }}
+          >
           {/* Seizure Diary */}
           <TouchableOpacity 
-            style={{
-              backgroundColor: 'white',
-              width: '48%',
-              padding: 28,
-              borderRadius: 16,
-              marginBottom: 24,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5,
-              minHeight: 220,
-            }}
+            style={cardStyle}
             onPress={handleSeizureDiary}
           >
             <View style={{ marginBottom: 16, padding: 8 }}>
@@ -629,20 +678,7 @@ export default function HomeScreen() {
 
           {/* Medication Reminder */}
           <TouchableOpacity 
-            style={{
-              backgroundColor: 'white',
-              width: '48%',
-              padding: 28,
-              borderRadius: 16,
-              marginBottom: 24,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5,
-              minHeight: 220,
-            }}
+            style={cardStyle}
             onPress={handleMedicationReminder}
           >
             <View style={{ marginBottom: 16, padding: 8 }}>
@@ -673,20 +709,7 @@ export default function HomeScreen() {
 
           {/* Doctor Connect */}
           <TouchableOpacity 
-            style={{
-              backgroundColor: 'white',
-              width: '48%',
-              padding: 24,
-              borderRadius: 16,
-              marginBottom: 24,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5,
-              minHeight: 220,
-            }}
+            style={cardStyle}
             onPress={handleDoctorConnect}
           >
             <View style={{ marginBottom: 16, padding: 8 }}>
@@ -717,20 +740,7 @@ export default function HomeScreen() {
 
           {/* Education */}
           <TouchableOpacity 
-            style={{
-              backgroundColor: 'white',
-              width: '48%',
-              padding: 24,
-              borderRadius: 16,
-              marginBottom: 24,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5,
-              minHeight: 220,
-            }}
+            style={cardStyle}
             onPress={handleEducation}
           >
             <View style={{ marginBottom: 16, padding: 8 }}>
@@ -758,6 +768,7 @@ export default function HomeScreen() {
               {t('education_desc')}
             </Text>
           </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
@@ -770,10 +781,13 @@ export default function HomeScreen() {
         onClose={() => setIsLanguageSelectorVisible(false)}
       />
       <FloatingChatbot 
-  apiEndpoint="YOUR_API_ENDPOINT_HERE"
-  position={{ bottom: 155, right: 20 }}
-  chatPosition="center"
-/>
+        apiEndpoint="https://api.openai.com/v1/chat/completions"
+        position={{ 
+          bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 130, 150) : 155, 
+          right: 20 
+        }}
+        chatPosition="center"
+      />
     </SafeAreaView>
   );
 }

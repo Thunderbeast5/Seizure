@@ -5,10 +5,13 @@ import {
   TouchableOpacity, 
   ScrollView, 
   SafeAreaView,
-  Image
+  Image,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Mock data for educational content
 const CATEGORIES = [
@@ -76,6 +79,7 @@ const RECENT_ARTICLES = [
 
 export default function EducationScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   
   const renderCategoryItem = (category) => (
@@ -130,21 +134,74 @@ export default function EducationScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-blue-50">
-      <View className="flex-row items-center justify-between p-4 bg-blue-50">
+    <SafeAreaView 
+      style={{ 
+        flex: 1, 
+        backgroundColor: '#E6F3F8',
+        paddingTop: Platform.OS === 'android' ? 0 : undefined 
+      }}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+      {/* Header */}
+      <View 
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: Platform.OS === 'android' ? Math.max(insets.top + 35, 55) : 32,
+          marginBottom: Platform.OS === 'android' ? 15 : 10,
+          paddingHorizontal: Platform.OS === 'android' ? 12 : 16,
+          justifyContent: 'space-between',
+          backgroundColor: Platform.OS === 'android' ? 'transparent' : undefined,
+          width: '100%',
+        }}
+      >
+        {/* Back Button */}
         <TouchableOpacity 
-          className="p-2"
           onPress={() => navigation.goBack()}
+          style={{
+            padding: Platform.OS === 'android' ? 12 : 0,
+            minWidth: Platform.OS === 'android' ? 48 : 32,
+            minHeight: Platform.OS === 'android' ? 48 : 32,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+            borderRadius: Platform.OS === 'android' ? 8 : 0,
+          }}
         >
-          <Ionicons name="arrow-back" size={28} color="#4A90E2" />
+          <Ionicons name="arrow-back" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
         </TouchableOpacity>
-        <Text className="text-3xl font-bold text-slate-800">Education</Text>
-        <TouchableOpacity className="p-2">
-          <Ionicons name="search" size={28} color="#4A90E2" />
+        
+        {/* Title */}
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text 
+            style={{
+              fontSize: Platform.OS === 'android' ? 26 : 30,
+              fontWeight: 'bold',
+              color: '#1E293B',
+              textAlign: 'center',
+            }}
+          >
+            Education
+          </Text>
+        </View>
+        
+        {/* Search Button */}
+        <TouchableOpacity 
+          style={{
+            padding: Platform.OS === 'android' ? 12 : 0,
+            minWidth: Platform.OS === 'android' ? 48 : 32,
+            minHeight: Platform.OS === 'android' ? 48 : 32,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+            borderRadius: Platform.OS === 'android' ? 8 : 0,
+          }}
+        >
+          <Ionicons name="search" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="p-4">
+      <ScrollView style={{ paddingHorizontal: 16 }}>
         <View className="mb-6">
           <Text className="text-2xl font-bold text-slate-800 mb-4">Categories</Text>
           <View className="flex-row flex-wrap justify-between">

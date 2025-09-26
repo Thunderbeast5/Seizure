@@ -8,9 +8,12 @@ import {
   View,
   ActivityIndicator,
   SafeAreaView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConnectionRequests } from '../../components/ConnectionRequests';
 import { PatientIdDisplay } from '../../components/PatientIdDisplay';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,6 +24,7 @@ export default function DoctorConnect() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { profile, assignDoctor, removeDoctor } = useProfile();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('current');
   const [searchTerm, setSearchTerm] = useState('');
@@ -201,42 +205,146 @@ export default function DoctorConnect() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-blue-50">
-        <View className="flex-row items-center justify-between bg-blue-50">
-          <TouchableOpacity
-            className="p-2"
+      <SafeAreaView 
+        style={{ 
+          flex: 1, 
+          backgroundColor: '#E6F3F8',
+          paddingTop: Platform.OS === 'android' ? 0 : undefined 
+        }}
+      >
+        <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+        {/* Header */}
+        <View 
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: Platform.OS === 'android' ? Math.max(insets.top + 35, 55) : 32,
+            marginBottom: Platform.OS === 'android' ? 15 : 10,
+            paddingHorizontal: Platform.OS === 'android' ? 12 : 16,
+            justifyContent: 'space-between',
+            backgroundColor: Platform.OS === 'android' ? 'transparent' : undefined,
+            width: '100%',
+          }}
+        >
+          {/* Back Button */}
+          <TouchableOpacity 
             onPress={() => navigation.goBack()}
+            style={{
+              padding: Platform.OS === 'android' ? 12 : 0,
+              minWidth: Platform.OS === 'android' ? 48 : 32,
+              minHeight: Platform.OS === 'android' ? 48 : 32,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+              borderRadius: Platform.OS === 'android' ? 8 : 0,
+            }}
           >
-            <Ionicons name="arrow-back" size={28} color="#4A90E2" />
+            <Ionicons name="arrow-back" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
           </TouchableOpacity>
-          <Text className="text-3xl font-bold text-slate-800">Doctor Connect</Text>
-          <View className="w-12" />
+          
+          {/* Title */}
+          <View style={{ alignItems: 'center', flex: 1 }}>
+            <Text 
+              style={{
+                fontSize: Platform.OS === 'android' ? 26 : 30,
+                fontWeight: 'bold',
+                color: '#1E293B',
+                textAlign: 'center',
+              }}
+            >
+              Doctor Connect
+            </Text>
+          </View>
+          
+          {/* Spacer */}
+          <View style={{ width: Platform.OS === 'android' ? 48 : 32 }} />
         </View>
-        <View className="flex-1 justify-center items-center">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text className="text-lg text-gray-600 mt-4">Loading doctors...</Text>
+          <Text style={{ fontSize: 18, color: '#64748B', marginTop: 16 }}>Loading doctors...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-blue-50">
-      <View className="flex-row items-center justify-between bg-blue-50">
-        <TouchableOpacity
-          className="p-2"
+    <SafeAreaView 
+      style={{ 
+        flex: 1, 
+        backgroundColor: '#E6F3F8',
+        paddingTop: Platform.OS === 'android' ? 0 : undefined 
+      }}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+      {/* Header */}
+      <View 
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: Platform.OS === 'android' ? Math.max(insets.top + 35, 55) : 32,
+          marginBottom: Platform.OS === 'android' ? 15 : 10,
+          paddingHorizontal: Platform.OS === 'android' ? 12 : 16,
+          justifyContent: 'space-between',
+          backgroundColor: Platform.OS === 'android' ? 'transparent' : undefined,
+          width: '100%',
+        }}
+      >
+        {/* Back Button */}
+        <TouchableOpacity 
           onPress={() => navigation.goBack()}
+          style={{
+            padding: Platform.OS === 'android' ? 12 : 0,
+            minWidth: Platform.OS === 'android' ? 48 : 32,
+            minHeight: Platform.OS === 'android' ? 48 : 32,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+            borderRadius: Platform.OS === 'android' ? 8 : 0,
+          }}
         >
-          <Ionicons name="arrow-back" size={28} color="#4A90E2" />
+          <Ionicons name="arrow-back" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
         </TouchableOpacity>
-        <Text className="text-3xl font-bold text-slate-800">Doctor Connect</Text>
-        <View className="w-12" />
+        
+        {/* Title */}
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text 
+            style={{
+              fontSize: Platform.OS === 'android' ? 26 : 30,
+              fontWeight: 'bold',
+              color: '#1E293B',
+              textAlign: 'center',
+            }}
+          >
+            Doctor Connect
+          </Text>
+        </View>
+        
+        {/* Spacer */}
+        <View style={{ width: Platform.OS === 'android' ? 48 : 32 }} />
       </View>
-      <Text className="text-lg text-slate-600 text-center mb-2">
+      
+      {/* Subtitle */}
+      <Text 
+        style={{
+          fontSize: 18,
+          color: '#64748B',
+          textAlign: 'center',
+          marginBottom: 8,
+          paddingHorizontal: 16,
+        }}
+      >
         Connect with healthcare professionals to manage your care
       </Text>
       {/* Tab Navigation */}
-      <View className="flex-row justify-between px-4 mb-4 mt-2">
+      <View 
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          marginBottom: 16,
+          marginTop: 8,
+        }}
+      >
         {[
           { key: 'current', label: 'Current' },
           { key: 'search', label: 'Search' },
@@ -245,16 +353,28 @@ export default function DoctorConnect() {
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
-            className={`flex-1 mx-1 py-2 rounded-lg ${activeTab === tab.key ? 'bg-blue-600' : 'bg-slate-200'}`}
+            style={{
+              flex: 1,
+              marginHorizontal: 4,
+              paddingVertical: 8,
+              borderRadius: 8,
+              backgroundColor: activeTab === tab.key ? '#4A90E2' : '#E2E8F0',
+            }}
             onPress={() => setActiveTab(tab.key)}
           >
-            <Text className={`text-center font-semibold ${activeTab === tab.key ? 'text-white' : 'text-slate-700'}`}>
+            <Text 
+              style={{
+                textAlign: 'center',
+                fontWeight: '600',
+                color: activeTab === tab.key ? 'white' : '#334155',
+              }}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
-      <ScrollView className="px-4">
+      <ScrollView style={{ paddingHorizontal: 16 }}>
         {activeTab === 'current' && renderCurrentDoctor()}
         {activeTab === 'search' && renderDoctorSearch()}
         {activeTab === 'requests' && renderConnectionRequests()}

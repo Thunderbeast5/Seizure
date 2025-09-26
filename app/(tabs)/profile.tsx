@@ -9,8 +9,10 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -50,6 +52,7 @@ export default function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<any>({});
   const [imageError, setImageError] = useState(false);
+  const insets = useSafeAreaInsets();
   
   // Get auth context - this must be called at the top level
   const authContext = useAuth();
@@ -605,10 +608,17 @@ export default function ProfileScreen() {
   // Show loading state
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-blue-50">
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="mt-4 text-slate-600">Loading profile...</Text>
+      <SafeAreaView 
+        style={{ 
+          flex: 1, 
+          backgroundColor: '#E6F3F8',
+          paddingTop: Platform.OS === 'android' ? 0 : undefined 
+        }}
+      >
+        <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#4A90E2" />
+          <Text style={{ marginTop: 16, color: '#64748B', fontSize: 16 }}>Loading profile...</Text>
         </View>
       </SafeAreaView>
     );
@@ -617,23 +627,36 @@ export default function ProfileScreen() {
   // Show error state
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-blue-50">
-        <View className="flex-1 justify-center items-center px-6">
+      <SafeAreaView 
+        style={{ 
+          flex: 1, 
+          backgroundColor: '#E6F3F8',
+          paddingTop: Platform.OS === 'android' ? 0 : undefined 
+        }}
+      >
+        <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
           <Ionicons name="alert-circle" size={64} color="#EF4444" />
-          <Text className="mt-4 text-slate-800 text-lg font-semibold text-center">
+          <Text style={{ marginTop: 16, color: '#1E293B', fontSize: 18, fontWeight: '600', textAlign: 'center' }}>
             Profile Loading Error
           </Text>
-          <Text className="mt-2 text-slate-600 text-center">
+          <Text style={{ marginTop: 8, color: '#64748B', textAlign: 'center' }}>
             {error}
           </Text>
           <TouchableOpacity 
-            className="mt-6 bg-blue-500 rounded-lg px-6 py-3"
+            style={{
+              marginTop: 24,
+              backgroundColor: '#4A90E2',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
             onPress={() => {
               setError(null);
               setLoading(true);
             }}
           >
-            <Text className="text-white font-medium">Retry</Text>
+            <Text style={{ color: 'white', fontWeight: '500' }}>Retry</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -643,20 +666,33 @@ export default function ProfileScreen() {
   // Show message if no user but not loading
   if (!user) {
     return (
-      <SafeAreaView className="flex-1 bg-blue-50">
-        <View className="flex-1 justify-center items-center px-6">
+      <SafeAreaView 
+        style={{ 
+          flex: 1, 
+          backgroundColor: '#E6F3F8',
+          paddingTop: Platform.OS === 'android' ? 0 : undefined 
+        }}
+      >
+        <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
           <Ionicons name="person-circle" size={64} color="#9CA3AF" />
-          <Text className="mt-4 text-slate-800 text-lg font-semibold text-center">
+          <Text style={{ marginTop: 16, color: '#1E293B', fontSize: 18, fontWeight: '600', textAlign: 'center' }}>
             Please Sign In
           </Text>
-          <Text className="mt-2 text-slate-600 text-center">
+          <Text style={{ marginTop: 8, color: '#64748B', textAlign: 'center' }}>
             You need to be signed in to view your profile
           </Text>
           <TouchableOpacity 
-            className="mt-6 bg-blue-500 rounded-lg px-6 py-3"
+            style={{
+              marginTop: 24,
+              backgroundColor: '#4A90E2',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
             onPress={() => router.push('/login')}
           >
-            <Text className="text-white font-medium">Go to Login</Text>
+            <Text style={{ color: 'white', fontWeight: '500' }}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -664,16 +700,59 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-blue-50 overflow-hidden">
-      <View className="flex-row items-center justify-between p-4 bg-blue-50">
+    <SafeAreaView 
+      style={{ 
+        flex: 1, 
+        backgroundColor: '#E6F3F8',
+        paddingTop: Platform.OS === 'android' ? 0 : undefined 
+      }}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
+      {/* Header */}
+      <View 
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: Platform.OS === 'android' ? Math.max(insets.top + 20, 40) : 32,
+          marginBottom: Platform.OS === 'android' ? 15 : 10,
+          paddingHorizontal: Platform.OS === 'android' ? 12 : 16,
+          justifyContent: 'space-between',
+          backgroundColor: Platform.OS === 'android' ? 'transparent' : undefined,
+          width: '100%',
+        }}
+      >
+        {/* Back Button */}
         <TouchableOpacity 
-          className="p-2"
           onPress={() => router.push('/(tabs)')}
+          style={{
+            padding: Platform.OS === 'android' ? 12 : 0,
+            minWidth: Platform.OS === 'android' ? 48 : 32,
+            minHeight: Platform.OS === 'android' ? 48 : 32,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+            borderRadius: Platform.OS === 'android' ? 8 : 0,
+          }}
         >
-          <Ionicons name="arrow-back" size={24} color="#3B82F6" />
+          <Ionicons name="arrow-back" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
         </TouchableOpacity>
-        <Text className="text-2xl font-bold text-slate-800">Profile</Text>
-        <View className="w-10" />
+        
+        {/* Title */}
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text 
+            style={{
+              fontSize: Platform.OS === 'android' ? 26 : 30,
+              fontWeight: 'bold',
+              color: '#1E293B',
+              textAlign: 'center',
+            }}
+          >
+            Profile
+          </Text>
+        </View>
+        
+        {/* Spacer */}
+        <View style={{ width: Platform.OS === 'android' ? 48 : 32 }} />
       </View>
 
       <View className="bg-blue-50">
