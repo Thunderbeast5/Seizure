@@ -1,4 +1,4 @@
-# Seizure Management Healthcare Ecosystem
+# Seizure Management Healthcare Ecosystem bl
 
 A comprehensive healthcare management system consisting of a **Patient Mobile App** (React Native) and a **Doctor Web Portal** (React + Tailwind CSS), both connected through Firebase for real-time data sharing and patient-doctor communication.
 
