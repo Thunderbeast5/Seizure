@@ -12,6 +12,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase.config';
+import { notificationService } from './notificationService';
 
 export interface Medication {
   id?: string;
@@ -118,6 +119,11 @@ class MedicationService {
       console.log('Adding medication for user:', userId, cleanMedication);
       const docRef = await addDoc(collection(db, this.collectionName), cleanMedication);
       console.log('Medication added successfully with ID:', docRef.id);
+      
+      // Schedule notifications for the new medication
+      const fullMedication = { ...cleanMedication, id: docRef.id } as Medication;
+      await notificationService.scheduleMedicationNotifications(fullMedication);
+      
       return docRef.id;
     } catch (error) {
       console.error('Error adding medication:', error);
@@ -133,6 +139,14 @@ class MedicationService {
         ...updates,
         updatedAt: serverTimestamp()
       });
+      
+      // Update notifications if time, active status, or other relevant fields changed
+      if (updates.time || updates.active !== undefined || updates.name || updates.dosage) {
+        const updatedMedication = await this.getMedicationById(medicationId);
+        if (updatedMedication) {
+          await notificationService.updateMedicationNotifications(updatedMedication);
+        }
+      }
     } catch (error) {
       console.error('Error updating medication:', error);
       throw error;
@@ -142,6 +156,9 @@ class MedicationService {
   // Delete a medication
   async deleteMedication(medicationId: string): Promise<void> {
     try {
+      // Cancel notifications before deleting
+      await notificationService.cancelMedicationNotifications(medicationId);
+      
       const medicationRef = doc(db, this.collectionName, medicationId);
       await deleteDoc(medicationRef);
     } catch (error) {

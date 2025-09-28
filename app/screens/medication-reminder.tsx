@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -19,6 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMedications } from '../../hooks/useMedications';
 import { CreateMedicationData, Medication } from '../../services/medicationService';
+import { notificationService } from '../../services/notificationService';
+import { openSettings } from 'expo-linking';
 
 // Define frequency options
 const FREQUENCY_OPTIONS = [
@@ -39,7 +41,8 @@ const DOSAGE_UNITS = ['mg', 'g', 'ml', 'tablets', 'capsules', 'drops', 'puffs'];
 
 export default function MedicationsScreen() {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const authContext = useAuth();
+  const user = authContext?.user;
   const insets = useSafeAreaInsets();
   const { 
     medications, 
@@ -65,6 +68,84 @@ export default function MedicationsScreen() {
   const [showDosagePicker, setShowDosagePicker] = useState(false);
   const [showFrequencyPicker, setShowFrequencyPicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  const initializeNotifications = useCallback(async () => {
+    try {
+      const hasPermission = await notificationService.requestPermissions();
+      setNotificationsEnabled(hasPermission);
+      
+      if (!hasPermission) {
+        Alert.alert(
+          'Notification Permission Required',
+          'To receive medication reminders, please enable notifications in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => openSettings() }
+          ]
+        );
+      } else {
+        // Schedule notifications for existing active medications
+        if (medications && medications.length > 0) {
+          for (const medication of medications) {
+            if (medication.active) {
+              await notificationService.scheduleMedicationNotifications(medication);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing notifications:', error);
+    }
+  }, [medications]);
+
+  const setupNotificationListeners = () => {
+    // Handle notification taps
+    const notificationResponseSubscription = notificationService.addNotificationResponseListener(
+      (response) => {
+        const data = response.notification.request.content.data;
+        if (data?.type === 'medication_reminder') {
+          // Show medication taken confirmation
+          Alert.alert(
+            'Medication Reminder',
+            `Did you take ${data.medicationName} (${data.dosage})?`,
+            [
+              { text: 'Not Yet', style: 'cancel' },
+              { 
+                text: 'Taken', 
+                onPress: () => notificationService.markMedicationAsTaken(String(data.medicationId), String(data.time))
+              }
+            ]
+          );
+        }
+      }
+    );
+
+    // Handle foreground notifications
+    const notificationReceivedSubscription = notificationService.addNotificationReceivedListener(
+      (notification) => {
+        const data = notification.request.content.data;
+        if (data?.type === 'medication_reminder') {
+          // You could show an in-app notification here if desired
+          console.log('Medication reminder received:', data.medicationName);
+        }
+      }
+    );
+
+    // Cleanup listeners on unmount
+    return () => {
+      notificationResponseSubscription.remove();
+      notificationReceivedSubscription.remove();
+    };
+  };
+
+  // Initialize notifications on component mount
+  useEffect(() => {
+    initializeNotifications();
+    const cleanup = setupNotificationListeners();
+    return cleanup;
+  }, [medications, initializeNotifications]);
+
   const [selectedTimeIndex, setSelectedTimeIndex] = useState(0);
   
   // Dosage picker state
@@ -646,25 +727,49 @@ export default function MedicationsScreen() {
           </Text>
         </View>
         
-        {/* Refresh Button */}
-        <TouchableOpacity 
-          onPress={() => {
-            if (user?.uid) {
-              loadMedications();
-            }
-          }}
-          style={{
-            padding: Platform.OS === 'android' ? 12 : 0,
-            minWidth: Platform.OS === 'android' ? 48 : 32,
-            minHeight: Platform.OS === 'android' ? 48 : 32,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
-            borderRadius: Platform.OS === 'android' ? 8 : 0,
-          }}
-        >
-          <Ionicons name="refresh" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
-        </TouchableOpacity>
+        {/* Header Icons */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Notification Status */}
+          <TouchableOpacity 
+            onPress={initializeNotifications}
+            style={{
+              padding: Platform.OS === 'android' ? 8 : 6,
+              marginRight: 8,
+              minWidth: Platform.OS === 'android' ? 40 : 32,
+              minHeight: Platform.OS === 'android' ? 40 : 32,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+              borderRadius: Platform.OS === 'android' ? 8 : 0,
+            }}
+          >
+            <Ionicons 
+              name={notificationsEnabled ? "notifications" : "notifications-off"} 
+              size={Platform.OS === 'android' ? 20 : 24} 
+              color={notificationsEnabled ? "#4A90E2" : "#EF4444"} 
+            />
+          </TouchableOpacity>
+          
+          {/* Refresh Button */}
+          <TouchableOpacity 
+            onPress={() => {
+              if (user?.uid) {
+                loadMedications();
+              }
+            }}
+            style={{
+              padding: Platform.OS === 'android' ? 8 : 6,
+              minWidth: Platform.OS === 'android' ? 40 : 32,
+              minHeight: Platform.OS === 'android' ? 40 : 32,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
+              borderRadius: Platform.OS === 'android' ? 8 : 0,
+            }}
+          >
+            <Ionicons name="refresh" size={Platform.OS === 'android' ? 20 : 24} color="#4A90E2" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {showAddForm ? renderAddForm() : renderMedicationList()}
