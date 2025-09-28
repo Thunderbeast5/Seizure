@@ -78,6 +78,16 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
 
+    // Chat conversations - simplified rules for testing
+    match /chats/{chatId} {
+      allow read, write, create: if request.auth != null;
+      
+      // Messages within a chat
+      match /messages/{messageId} {
+        allow read, write, create: if request.auth != null;
+      }
+    }
+
     // Allow users to create documents (for initial user creation)
     match /{document=**} {
       allow create: if request.auth != null;

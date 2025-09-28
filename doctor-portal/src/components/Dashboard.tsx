@@ -3,6 +3,7 @@ import {
     BellIcon,
     CalendarIcon,
     ChartBarIcon,
+    ChatBubbleLeftIcon,
     ExclamationTriangleIcon,
     MagnifyingGlassIcon,
     UserGroupIcon
@@ -18,6 +19,7 @@ import { db } from '../firebase.config';
 import { ConnectionRequests } from './ConnectionRequests';
 import { PatientManagement } from './PatientManagement';
 import { PatientSearch } from './PatientSearch';
+import { ChatList } from './ChatList';
 
 export const Dashboard: React.FC = () => {
   const { user, doctorData, logout } = useAuth();
@@ -859,6 +861,19 @@ export const Dashboard: React.FC = () => {
                   Connection Requests
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab('messages')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'messages'
+                    ? 'border-medical-500 text-medical-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <ChatBubbleLeftIcon className="h-5 w-5" />
+                  Messages
+                </div>
+              </button>
               {selectedPatientId && (
                 <button
                   onClick={() => setActiveTab('manage')}
@@ -882,6 +897,7 @@ export const Dashboard: React.FC = () => {
         {activeTab === 'overview' && renderOverview()}
         {activeTab === 'search' && <PatientSearch />}
         {activeTab === 'requests' && <ConnectionRequests />}
+        {activeTab === 'messages' && <ChatList />}
         {activeTab === 'manage' && selectedPatientId && (
           <div>
             <div className="mb-4">

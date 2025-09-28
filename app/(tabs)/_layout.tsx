@@ -1,5 +1,4 @@
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Tabs } from 'expo-router';
 import React from 'react';
