@@ -1,28 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView,
-  Alert,
-  ActivityIndicator,
-  TextInput,
-  Modal,
-  Linking,
-  KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import {router} from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import * as Location from 'expo-location';
+import { router } from 'expo-router';
+import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase.config';
+import { sosService } from '../../services/sosService';
 
 export default function EmergencyScreen() {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user || null;
   const [sendingAlert, setSendingAlert] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -72,19 +75,47 @@ export default function EmergencyScreen() {
   }, [user]);
 
 
-  const handleSendAlert = () => {
-    setSendingAlert(true);
-    
-    // Simulate sending alert
-    setTimeout(() => {
-      setSendingAlert(false);
+  const handleSendAlert = async () => {
+    if (!user) {
+      Alert.alert('Login required', 'Please log in to use SOS');
+      return;
+    }
+
+    if (emergencyContacts.length === 0) {
+      Alert.alert('No contacts', 'Add at least one emergency contact first');
+      return;
+    }
+
+    try {
+      setSendingAlert(true);
+
+      // Ensure permission prompt happens gracefully
+      try {
+        await Location.requestForegroundPermissionsAsync();
+      } catch {}
+
+      const numbers = emergencyContacts.map(c => c.phone);
+      const primaryContact = emergencyContacts[0];
+      const result = await sosService.sendSosToNumbers(numbers, {
+        userName: user.displayName || user.email || 'Unknown',
+        contactName: primaryContact?.name ? `${primaryContact.name} (${primaryContact.relation})` : undefined,
+      });
+
       setAlertSent(true);
+      const ok = result.failed.length === 0;
       Alert.alert(
-        'Emergency Alert Sent',
-        'Your emergency contacts have been notified with your location.',
+        ok ? 'Emergency Alert Sent' : 'Alert Partially Sent',
+        ok
+          ? 'Your emergency contacts have been notified with your location.'
+          : `Sent to: ${result.sent.join(', ')}\nFailed: ${result.failed.map(f => `${f.number}${f.status ? ` [${f.status}]` : ''}`).join(', ')}`,
         [{ text: 'OK' }]
       );
-    }, 2000);
+    } catch (e) {
+      console.error('SOS send failed', e);
+      Alert.alert('Error', 'Failed to send SOS. Please try again.');
+    } finally {
+      setSendingAlert(false);
+    }
   };
 
   const handleCallEmergency = () => {

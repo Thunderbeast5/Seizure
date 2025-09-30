@@ -37,6 +37,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "GOOGLE_MAPS_API_KEY": "AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg",
+      "PUSHBULLET_API_KEY": "o.b4mbchHpAfij0odL3ornqGvcxYnXwDIq",
+      "PUSHBULLET_DEVICE_IDEN": "ujAQHzKKZCSsjCBEeHexUqq",
+      "DEFAULT_COUNTRY_CODE": "+91"
     }
   }
 }
