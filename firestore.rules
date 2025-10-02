@@ -78,6 +78,36 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
 
+    // Emergency alerts - users can read/write their own, doctors can read all alerts
+    match /emergencyAlerts/{alertId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Doctors can read all emergency alerts (simplified for emergency situations)
+      allow read, write: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+    }
+
+    // Emergency notifications - allow creation by anyone, doctors can read all
+    match /emergencyNotifications/{notificationId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      // Allow patients to create emergency notifications for their doctors
+      allow write: if request.auth != null;
+    }
+
+    // Patient notifications - patients can read their own, doctors can create for their patients
+    match /patientNotifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.patientId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.patientId;
+      // Doctors can create notifications for their patients
+      allow create: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+      // Doctors can read notifications they created
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid)) &&
+        resource.data.doctorId == request.auth.uid;
+    }
+
     // Chat conversations - simplified rules for testing
     match /chats/{chatId} {
       allow read, write, create: if request.auth != null;

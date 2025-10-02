@@ -20,6 +20,7 @@ import { ConnectionRequests } from './ConnectionRequests';
 import { PatientManagement } from './PatientManagement';
 import { PatientSearch } from './PatientSearch';
 import { ChatList } from './ChatList';
+import { EmergencyAlerts } from './EmergencyAlerts';
 
 export const Dashboard: React.FC = () => {
   const { user, doctorData, logout } = useAuth();
@@ -874,6 +875,19 @@ export const Dashboard: React.FC = () => {
                   Messages
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab('emergencies')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'emergencies'
+                    ? 'border-medical-500 text-medical-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <ExclamationTriangleIcon className="h-5 w-5" />
+                  Emergency Alerts
+                </div>
+              </button>
               {selectedPatientId && (
                 <button
                   onClick={() => setActiveTab('manage')}
@@ -898,6 +912,18 @@ export const Dashboard: React.FC = () => {
         {activeTab === 'search' && <PatientSearch />}
         {activeTab === 'requests' && <ConnectionRequests />}
         {activeTab === 'messages' && <ChatList />}
+        {activeTab === 'emergencies' && user?.uid ? (
+          <EmergencyAlerts doctorId={user.uid} />
+        ) : activeTab === 'emergencies' ? (
+          <div className="p-6">
+            <div className="text-center">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-4 mx-auto"></div>
+                <div className="h-20 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {activeTab === 'manage' && selectedPatientId && (
           <div>
             <div className="mb-4">

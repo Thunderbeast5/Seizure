@@ -62,23 +62,7 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
   
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-  useEffect(() => {
-    if (isOpen) {
-      Animated.spring(slideAnim, {
-        toValue: 1,
-        useNativeDriver: false, // Changed to false for layout animations
-        tension: 100,
-        friction: 8,
-      }).start();
-    } else {
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: false,
-        tension: 100,
-        friction: 8,
-      }).start();
-    }
-  }, [isOpen]);
+  // Using native Modal animations for better compatibility with Expo SDK 54
 
   const animateButton = () => {
     Animated.sequence([
@@ -98,10 +82,8 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
   };
 
   const toggleChat = () => {
-    console.log('FloatingChatbot: Toggle chat pressed, current state:', isOpen);
     animateButton();
     setIsOpen(!isOpen);
-    console.log('FloatingChatbot: New state will be:', !isOpen);
   };
 
   const sendMessage = async () => {
@@ -196,10 +178,9 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
     <Modal
       visible={isOpen}
       transparent={true}
-      animationType={Platform.OS === 'android' ? 'slide' : 'none'}
+      animationType="fade"
       onRequestClose={toggleChat}
-      statusBarTranslucent={Platform.OS === 'android'}
-      hardwareAccelerated={Platform.OS === 'android'}
+      statusBarTranslucent={false}
     >
       <View style={{
         flex: 1,
@@ -208,7 +189,7 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
         alignItems: 'center',
         padding: 20,
       }}>
-        <Animated.View
+        <View
           style={{
             width: Math.min(screenWidth - 40, 400),
             height: Math.min(screenHeight * 0.8, 600),
@@ -219,15 +200,6 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
             shadowOpacity: 0.3,
             shadowRadius: 20,
             elevation: 20,
-            transform: [
-              {
-                scale: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-            opacity: slideAnim,
           }}
         >
           {/* Chat Header */}
@@ -421,7 +393,7 @@ const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );

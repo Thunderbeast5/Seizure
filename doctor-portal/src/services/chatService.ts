@@ -24,6 +24,9 @@ export interface ChatMessage {
   message: string;
   timestamp: any;
   read: boolean;
+  seizureId?: string; // Link message to specific seizure
+  isUrgent?: boolean; // Mark urgent messages for immediate attention
+  messageType?: 'normal' | 'seizure_alert' | 'medical_advice'; // Message categorization
 }
 
 export interface Chat {
@@ -91,7 +94,12 @@ class ChatService {
     senderId: string,
     senderType: 'doctor' | 'patient',
     senderName: string,
-    message: string
+    message: string,
+    options?: {
+      seizureId?: string;
+      isUrgent?: boolean;
+      messageType?: 'normal' | 'seizure_alert' | 'medical_advice';
+    }
   ): Promise<string> {
     try {
       const messageData: ChatMessage = {
@@ -100,8 +108,15 @@ class ChatService {
         senderName,
         message,
         timestamp: serverTimestamp(),
-        read: false
+        read: false,
+        isUrgent: options?.isUrgent || false,
+        messageType: options?.messageType || 'normal'
       };
+
+      // Only add seizureId if it's defined
+      if (options?.seizureId) {
+        messageData.seizureId = options.seizureId;
+      }
 
       // Add message to messages subcollection
       const messagesRef = collection(db, this.chatsCollection, chatId, this.messagesSubcollection);
@@ -302,6 +317,46 @@ class ChatService {
       return null;
     } catch (error) {
       console.error('Error fetching chat by ID:', error);
+      throw error;
+    }
+  }
+
+  // Send urgent seizure-related message
+  async sendSeizureAlert(
+    doctorId: string,
+    patientId: string,
+    doctorName: string,
+    patientName: string,
+    seizureId: string,
+    message: string
+  ): Promise<string> {
+    try {
+      // Create or get chat
+      const chatId = await this.createOrGetChat({
+        doctorId,
+        patientId,
+        doctorName,
+        patientName
+      });
+
+      // Send urgent message linked to seizure
+      const messageId = await this.sendMessage(
+        chatId,
+        doctorId,
+        'doctor',
+        doctorName,
+        message,
+        {
+          seizureId,
+          isUrgent: true,
+          messageType: 'seizure_alert'
+        }
+      );
+
+      console.log(`Sent seizure alert message for seizure ${seizureId}`);
+      return messageId;
+    } catch (error) {
+      console.error('Error sending seizure alert:', error);
       throw error;
     }
   }

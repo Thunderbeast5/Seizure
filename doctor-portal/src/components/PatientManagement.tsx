@@ -4,16 +4,21 @@ import {
     ChartBarIcon,
     PlusIcon,
     TrashIcon,
-    UserIcon
+    UserIcon,
+    ChatBubbleLeftRightIcon,
+    FunnelIcon
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
 import { patientDataService, PatientMedication, PatientProfile, PatientSeizure } from '../services/patientDataService';
+import { SeizureMessageModal } from './SeizureMessageModal';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PatientManagementProps {
   patientId: string;
 }
 
 export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId }) => {
+  const { user: doctor } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [highlightSeizureId, setHighlightSeizureId] = useState<string | null>(null);
   const [patientData, setPatientData] = useState<{
@@ -26,6 +31,9 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
   const [showAddMedication, setShowAddMedication] = useState(false);
   const [editingSeizure, setEditingSeizure] = useState<PatientSeizure | null>(null);
   const [editingMedication, setEditingMedication] = useState<PatientMedication | null>(null);
+  const [showSeizureMessage, setShowSeizureMessage] = useState(false);
+  const [selectedSeizureForMessage, setSelectedSeizureForMessage] = useState<PatientSeizure | null>(null);
+  const [seizureSortBy, setSeizureSortBy] = useState<'date' | 'type' | 'frequency'>('date');
 
   // Read deep-link params to focus a specific seizure and switch to the Seizures tab
   useEffect(() => {
@@ -106,6 +114,89 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
     } catch (error) {
       console.error('Error updating medication:', error);
     }
+  };
+
+  const handleSendSeizureMessage = (seizure: PatientSeizure) => {
+    console.log('Selected seizure for message:', seizure);
+    console.log('Seizure ID:', seizure.id);
+    setSelectedSeizureForMessage(seizure);
+    setShowSeizureMessage(true);
+  };
+
+  const handleCloseSeizureMessage = () => {
+    setShowSeizureMessage(false);
+    setSelectedSeizureForMessage(null);
+  };
+
+  // Sort seizures based on selected criteria
+  const getSortedSeizures = () => {
+    if (!patientData?.seizures) return [];
+    
+    const seizures = [...patientData.seizures];
+    
+    switch (seizureSortBy) {
+      case 'date':
+        return seizures.sort((a, b) => {
+          const dateA = new Date(`${a.date} ${a.time || '00:00'}`);
+          const dateB = new Date(`${b.date} ${b.time || '00:00'}`);
+          return dateB.getTime() - dateA.getTime(); // Most recent first
+        });
+        
+      case 'type':
+        return seizures.sort((a, b) => {
+          // First sort by type alphabetically, then by date within same type
+          if (a.type === b.type) {
+            const dateA = new Date(`${a.date} ${a.time || '00:00'}`);
+            const dateB = new Date(`${b.date} ${b.time || '00:00'}`);
+            return dateB.getTime() - dateA.getTime();
+          }
+          return a.type.localeCompare(b.type);
+        });
+        
+      case 'frequency':
+        // Group by type and sort by frequency
+        const typeFrequency: { [key: string]: number } = {};
+        seizures.forEach(seizure => {
+          typeFrequency[seizure.type] = (typeFrequency[seizure.type] || 0) + 1;
+        });
+        
+        return seizures.sort((a, b) => {
+          const freqA = typeFrequency[a.type];
+          const freqB = typeFrequency[b.type];
+          
+          if (freqA === freqB) {
+            // If same frequency, sort by date
+            const dateA = new Date(`${a.date} ${a.time || '00:00'}`);
+            const dateB = new Date(`${b.date} ${b.time || '00:00'}`);
+            return dateB.getTime() - dateA.getTime();
+          }
+          
+          return freqB - freqA; // Most frequent first
+        });
+        
+      default:
+        return seizures;
+    }
+  };
+
+  // Get seizure statistics for display
+  const getSeizureStats = () => {
+    const seizures = patientData?.seizures || [];
+    const typeFrequency: { [key: string]: number } = {};
+    
+    seizures.forEach(seizure => {
+      typeFrequency[seizure.type] = (typeFrequency[seizure.type] || 0) + 1;
+    });
+    
+    const sortedTypes = Object.entries(typeFrequency)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3); // Top 3 most frequent types
+    
+    return {
+      totalSeizures: seizures.length,
+      typeFrequency,
+      topTypes: sortedTypes
+    };
   };
 
   const handleDeleteSeizure = async (seizureId: string) => {
@@ -240,7 +331,7 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
                 <div className="space-y-3">
-                  {seizures.slice(0, 3).map((seizure) => (
+                  {getSortedSeizures().slice(0, 3).map((seizure) => (
                     <div key={seizure.id} className="flex items-center justify-between bg-white rounded p-3">
                       <div className="flex items-center space-x-3">
                         <CalendarIcon className="w-5 h-5 text-red-500" />
@@ -261,7 +352,21 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
           {activeTab === 'seizures' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Seizure Records</h3>
+                <div className="flex items-center space-x-4">
+                  <h3 className="text-lg font-medium text-gray-900">Seizure Records</h3>
+                  <div className="flex items-center space-x-2">
+                    <FunnelIcon className="w-4 h-4 text-gray-500" />
+                    <select
+                      value={seizureSortBy}
+                      onChange={(e) => setSeizureSortBy(e.target.value as 'date' | 'type' | 'frequency')}
+                      className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="date">Sort by Date (Recent First)</option>
+                      <option value="type">Sort by Type</option>
+                      <option value="frequency">Sort by Frequency</option>
+                    </select>
+                  </div>
+                </div>
                 <button
                   onClick={() => setShowAddSeizure(true)}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
@@ -271,13 +376,53 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
                 </button>
               </div>
 
-              {seizures.length === 0 ? (
+              {/* Seizure Statistics Summary */}
+              {patientData?.seizures && patientData.seizures.length > 0 && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Seizure Overview</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-600 font-medium">Total Seizures:</span>
+                      <span className="ml-2 text-blue-900">{getSeizureStats().totalSeizures}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-600 font-medium">Most Common Type:</span>
+                      <span className="ml-2 text-blue-900">
+                        {getSeizureStats().topTypes[0]?.[0] || 'None'} 
+                        {getSeizureStats().topTypes[0] && ` (${getSeizureStats().topTypes[0][1]} times)`}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-blue-600 font-medium">Last Seizure:</span>
+                      <span className="ml-2 text-blue-900">
+                        {getSortedSeizures()[0] ? new Date(getSortedSeizures()[0].date).toLocaleDateString() : 'None'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Top seizure types breakdown */}
+                  {getSeizureStats().topTypes.length > 1 && (
+                    <div className="mt-3">
+                      <span className="text-blue-600 font-medium text-sm">Frequency Breakdown:</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {getSeizureStats().topTypes.map(([type, count]) => (
+                          <span key={type} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                            {type}: {count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {getSortedSeizures().length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No seizure records found
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {seizures.map((seizure) => (
+                  {getSortedSeizures().map((seizure) => (
                     <div key={seizure.id} className={`bg-gray-50 rounded-lg p-4 ${highlightSeizureId === seizure.id ? 'ring-2 ring-red-400' : ''}`}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -285,7 +430,13 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
                             <h4 className="font-medium text-gray-900">{seizure.type}</h4>
                             <span className="text-sm text-gray-500">
                               {new Date(seizure.date).toLocaleDateString()}
+                              {seizure.time && ` at ${seizure.time}`}
                             </span>
+                            {seizureSortBy === 'frequency' && (
+                              <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                                {getSeizureStats().typeFrequency[seizure.type]} occurrences
+                              </span>
+                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
@@ -326,6 +477,13 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
                           )}
                         </div>
                         <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleSendSeizureMessage(seizure)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Send urgent message about this seizure"
+                          >
+                            <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                          </button>
                           <button
                             onClick={() => setEditingSeizure(seizure)}
                             className="text-blue-600 hover:text-blue-800"
@@ -511,6 +669,18 @@ export const PatientManagement: React.FC<PatientManagementProps> = ({ patientId 
           medication={editingMedication}
           onClose={() => setEditingMedication(null)}
           onSave={handleEditMedication}
+        />
+      )}
+
+      {/* Seizure Message Modal */}
+      {showSeizureMessage && selectedSeizureForMessage && (
+        <SeizureMessageModal
+          isOpen={showSeizureMessage}
+          onClose={handleCloseSeizureMessage}
+          seizure={selectedSeizureForMessage}
+          patientName={patientData?.profile?.child?.name || 'Patient'}
+          doctorId={doctor?.uid || ''}
+          doctorName={doctor?.displayName || 'Doctor'}
         />
       )}
     </div>

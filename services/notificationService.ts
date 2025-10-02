@@ -6,11 +6,10 @@ import { Medication } from './medicationService';
 // Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
   }),
 });
 
@@ -23,6 +22,8 @@ export interface NotificationData {
 
 class NotificationService {
   private readonly STORAGE_KEY = 'medication_notifications';
+  private recentNotifications = new Set<string>();
+  private notificationTimeout = 5000; // 5 seconds to prevent duplicates
 
   // Request notification permissions
   async requestPermissions(): Promise<boolean> {
@@ -284,6 +285,128 @@ class NotificationService {
     } catch (error) {
       console.error('Error getting medication compliance:', error);
       return [];
+    }
+  }
+
+  // Send urgent medical notification (for doctor messages)
+  async sendUrgentMedicalNotification(
+    title: string,
+    body: string,
+    data?: any
+  ): Promise<string | null> {
+    try {
+      // Configure urgent notification channel for Android
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('urgent-medical', {
+          name: 'Urgent Medical Alerts',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250, 250, 250],
+          lightColor: '#FF0000',
+          sound: 'default',
+          enableVibrate: true,
+          showBadge: true,
+          bypassDnd: true, // Bypass Do Not Disturb
+        });
+      }
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `🚨 ${title}`,
+          body,
+          data: {
+            ...data,
+            type: 'urgent_medical',
+            timestamp: new Date().toISOString(),
+          },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.MAX,
+          vibrate: [0, 250, 250, 250, 250, 250],
+          sticky: true, // Make notification persistent
+          // iOS specific properties for better background handling
+          ...(Platform.OS === 'ios' && {
+            badge: 1,
+            interruptionLevel: 'critical', // iOS 15+ critical notifications
+          }),
+        },
+        trigger: null, // Send immediately
+      });
+
+      console.log(`Sent urgent medical notification: ${notificationId}`);
+      return notificationId;
+    } catch (error) {
+      console.error('Error sending urgent medical notification:', error);
+      return null;
+    }
+  }
+
+  // Send seizure-related message notification
+  async sendSeizureMessageNotification(
+    doctorName: string,
+    message: string,
+    seizureId: string,
+    chatId: string
+  ): Promise<string | null> {
+    try {
+      return await this.sendUrgentMedicalNotification(
+        `Message from Dr. ${doctorName}`,
+        `About your recent seizure: ${message}`,
+        {
+          seizureId,
+          chatId,
+          doctorName,
+          messageType: 'seizure_alert'
+        }
+      );
+    } catch (error) {
+      console.error('Error sending seizure message notification:', error);
+      return null;
+    }
+  }
+
+  // Present local notification (for foreground notifications)
+  async presentLocalNotification(
+    title: string,
+    body: string,
+    data?: any
+  ): Promise<string | null> {
+    try {
+      // Create unique key for deduplication
+      const notificationKey = `${title}_${body}_${data?.messageId || Date.now()}`;
+      
+      // Check if we recently sent this notification
+      if (this.recentNotifications.has(notificationKey)) {
+        console.log('Duplicate notification prevented:', notificationKey);
+        return null;
+      }
+      
+      // Add to recent notifications and auto-remove after timeout
+      this.recentNotifications.add(notificationKey);
+      setTimeout(() => {
+        this.recentNotifications.delete(notificationKey);
+      }, this.notificationTimeout);
+
+      // Use scheduleNotificationAsync with null trigger for immediate presentation
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `🔔 ${title}`,
+          body,
+          data: {
+            ...data,
+            type: 'local_alert',
+            timestamp: new Date().toISOString(),
+          },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          vibrate: [0, 250, 250, 250],
+        },
+        trigger: null, // Present immediately
+      });
+
+      console.log(`Presented local notification: ${notificationId}`);
+      return notificationId;
+    } catch (error) {
+      console.error('Error presenting local notification:', error);
+      return null;
     }
   }
 }

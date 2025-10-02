@@ -19,6 +19,8 @@ import {router} from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase.config';
+import { emergencyService } from '../../services/emergencyService';
+import LocationService, { LocationData } from '../../services/locationService';
 
 export default function EmergencyScreen() {
   const navigation = useNavigation();
@@ -26,6 +28,9 @@ export default function EmergencyScreen() {
   const [sendingAlert, setSendingAlert] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
   
   // Emergency contacts state
   const [emergencyContacts, setEmergencyContacts] = useState<{id: string, name: string, phone: string, relation: string}[]>([]);
@@ -36,7 +41,7 @@ export default function EmergencyScreen() {
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactRelation, setNewContactRelation] = useState('');
 
-  // Load emergency contacts from Firebase
+  // Load emergency contacts and check location permissions
   useEffect(() => {
     const loadContacts = async () => {
       if (!user?.uid) {
@@ -68,27 +73,102 @@ export default function EmergencyScreen() {
       }
     };
 
+    const checkLocationPermissions = async () => {
+      const isAvailable = await LocationService.isLocationAvailable();
+      setLocationPermissionGranted(isAvailable);
+    };
+
     loadContacts();
+    checkLocationPermissions();
   }, [user]);
 
+  // Get current location when screen loads
+  useEffect(() => {
+    const getCurrentLocation = async () => {
+      if (!locationPermissionGranted) return;
+      
+      setLocationLoading(true);
+      try {
+        const location = await LocationService.getCurrentLocation();
+        setCurrentLocation(location);
+      } catch (error) {
+        console.error('Error getting location:', error);
+      } finally {
+        setLocationLoading(false);
+      }
+    };
 
-  const handleSendAlert = () => {
+    getCurrentLocation();
+  }, [locationPermissionGranted]);
+
+
+  const handleSendAlert = async () => {
+    if (!user?.uid || !user?.email) {
+      Alert.alert('Error', 'You must be logged in to send emergency alerts');
+      return;
+    }
+
     setSendingAlert(true);
     
-    // Simulate sending alert
-    setTimeout(() => {
-      setSendingAlert(false);
-      setAlertSent(true);
-      Alert.alert(
-        'Emergency Alert Sent',
-        'Your emergency contacts have been notified with your location.',
-        [{ text: 'OK' }]
+    try {
+      const userName = user.displayName || user.email.split('@')[0];
+      const alert = await emergencyService.sendEmergencyAlert(
+        user.uid,
+        user.email,
+        userName,
+        'seizure',
+        'Patient is experiencing a seizure and needs immediate assistance.'
       );
-    }, 2000);
+
+      if (alert) {
+        setAlertSent(true);
+        const locationText = alert.location.address || 
+          `${alert.location.latitude.toFixed(6)}, ${alert.location.longitude.toFixed(6)}`;
+        
+        Alert.alert(
+          '🚨 Emergency Alert Sent',
+          `Your emergency contacts and doctors have been notified.\n\nLocation: ${locationText}\n\nEmergency services: Call 911 if needed.`,
+          [
+            { text: 'Call 911', onPress: () => emergencyService.callEmergencyServices(), style: 'destructive' },
+            { text: 'OK', style: 'default' }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error sending emergency alert:', error);
+      Alert.alert(
+        'Alert Failed', 
+        'Failed to send emergency alert. Please call emergency services directly.',
+        [
+          { text: 'Call 911', onPress: () => emergencyService.callEmergencyServices(), style: 'destructive' },
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    } finally {
+      setSendingAlert(false);
+    }
   };
 
   const handleCallEmergency = () => {
-    Linking.openURL('tel:911');
+    emergencyService.callEmergencyServices();
+  };
+
+  const handleRefreshLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const location = await LocationService.getCurrentLocation();
+      setCurrentLocation(location);
+    } catch (error) {
+      console.error('Error refreshing location:', error);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleOpenInMaps = () => {
+    if (currentLocation) {
+      emergencyService.openLocationInMaps(currentLocation.latitude, currentLocation.longitude);
+    }
   };
 
   const handleCallContact = (phone: string, name: string) => {
@@ -174,10 +254,62 @@ export default function EmergencyScreen() {
           }}
           showsVerticalScrollIndicator={true}
         >
+        {/* Current Location Display */}
+        <View className="mb-6">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-xl font-bold text-gray-800">Current Location</Text>
+            <TouchableOpacity 
+              className="flex-row items-center bg-blue-500 rounded-lg px-3 py-2"
+              onPress={handleRefreshLocation}
+              disabled={locationLoading}
+            >
+              {locationLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="refresh" size={16} color="white" />
+              )}
+              <Text className="text-white font-semibold ml-1">Refresh</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View className="bg-white rounded-xl p-4 shadow-sm">
+            {currentLocation ? (
+              <>
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="location" size={20} color="#10B981" />
+                  <Text className="text-lg font-semibold text-gray-800 ml-2">
+                    {currentLocation.address || 'Address not available'}
+                  </Text>
+                </View>
+                <Text className="text-gray-600 mb-2">
+                  {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+                </Text>
+                <Text className="text-gray-500 text-sm mb-3">
+                  Accuracy: {currentLocation.accuracy ? `±${Math.round(currentLocation.accuracy)}m` : 'Unknown'}
+                </Text>
+                <TouchableOpacity 
+                  className="bg-blue-100 rounded-lg p-3 flex-row items-center justify-center"
+                  onPress={handleOpenInMaps}
+                >
+                  <Ionicons name="map" size={20} color="#3B82F6" />
+                  <Text className="text-blue-600 font-semibold ml-2">Open in Maps</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View className="flex-row items-center justify-center py-4">
+                <Ionicons name="location-outline" size={24} color="#9CA3AF" />
+                <Text className="text-gray-500 ml-2">
+                  {locationPermissionGranted ? 'Getting location...' : 'Location permission required'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
         <View className="mb-6">
           <Text className="text-xl font-bold text-gray-800 mb-2">Send Emergency Alert</Text>
           <Text className="text-lg text-gray-500 mb-4">
-            This will notify all your emergency contacts with your current location and that your child is having a seizure.
+            This will notify all your emergency contacts and doctors with your current location and that you need immediate assistance.
           </Text>
           
           <TouchableOpacity 
@@ -200,6 +332,18 @@ export default function EmergencyScreen() {
               </>
             )}
           </TouchableOpacity>
+          
+          {!locationPermissionGranted && (
+            <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+              <View className="flex-row items-center">
+                <Ionicons name="warning" size={20} color="#F59E0B" />
+                <Text className="text-yellow-800 font-semibold ml-2">Location Required</Text>
+              </View>
+              <Text className="text-yellow-700 mt-1">
+                Enable location services for emergency alerts to include your precise location.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Call Emergency Services */}

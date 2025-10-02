@@ -24,6 +24,9 @@ export interface ChatMessage {
   message: string;
   timestamp: any;
   read: boolean;
+  seizureId?: string; // Link message to specific seizure
+  isUrgent?: boolean; // Mark urgent messages for immediate attention
+  messageType?: 'normal' | 'seizure_alert' | 'medical_advice'; // Message categorization
 }
 
 export interface Chat {
@@ -96,7 +99,12 @@ class ChatService {
     senderId: string,
     senderType: 'doctor' | 'patient',
     senderName: string,
-    message: string
+    message: string,
+    options?: {
+      seizureId?: string;
+      isUrgent?: boolean;
+      messageType?: 'normal' | 'seizure_alert' | 'medical_advice';
+    }
   ): Promise<string> {
     try {
       const messageData: ChatMessage = {
@@ -105,8 +113,15 @@ class ChatService {
         senderName,
         message,
         timestamp: serverTimestamp(),
-        read: false
+        read: false,
+        isUrgent: options?.isUrgent || false,
+        messageType: options?.messageType || 'normal'
       };
+
+      // Only add seizureId if it's defined
+      if (options?.seizureId) {
+        messageData.seizureId = options.seizureId;
+      }
 
       // Add message to messages subcollection
       const messagesRef = collection(db, this.chatsCollection, chatId, this.messagesSubcollection);
@@ -131,6 +146,11 @@ class ChatService {
   // Get all chats for a user (doctor or patient)
   async getUserChats(userId: string, userType: 'doctor' | 'patient'): Promise<Chat[]> {
     try {
+      if (!userId || userId === 'undefined') {
+        console.warn('getUserChats called with invalid userId:', userId);
+        return [];
+      }
+
       const field = userType === 'doctor' ? 'doctorId' : 'patientId';
       const chatsQuery = query(
         collection(db, this.chatsCollection),
@@ -188,6 +208,12 @@ class ChatService {
     userType: 'doctor' | 'patient',
     callback: (chats: Chat[]) => void
   ): Unsubscribe {
+    if (!userId || userId === 'undefined') {
+      console.warn('subscribeToUserChats called with invalid userId:', userId);
+      callback([]);
+      return () => {}; // Return empty unsubscribe function
+    }
+
     const field = userType === 'doctor' ? 'doctorId' : 'patientId';
     const chatsQuery = query(
       collection(db, this.chatsCollection),
@@ -308,6 +334,103 @@ class ChatService {
     } catch (error) {
       console.error('Error fetching chat by ID:', error);
       throw error;
+    }
+  }
+
+  // Send urgent seizure-related message
+  async sendSeizureAlert(
+    doctorId: string,
+    patientId: string,
+    doctorName: string,
+    patientName: string,
+    seizureId: string,
+    message: string
+  ): Promise<string> {
+    try {
+      // Create or get chat
+      const chatId = await this.createOrGetChat({
+        doctorId,
+        patientId,
+        doctorName,
+        patientName
+      });
+
+      // Send urgent message linked to seizure
+      const messageId = await this.sendMessage(
+        chatId,
+        doctorId,
+        'doctor',
+        doctorName,
+        message,
+        {
+          seizureId,
+          isUrgent: true,
+          messageType: 'seizure_alert'
+        }
+      );
+
+      console.log(`Sent seizure alert message for seizure ${seizureId}`);
+      return messageId;
+    } catch (error) {
+      console.error('Error sending seizure alert:', error);
+      throw error;
+    }
+  }
+
+  // Get messages related to a specific seizure
+  async getSeizureMessages(seizureId: string): Promise<ChatMessage[]> {
+    try {
+      // This would require a compound query across all chats
+      // For now, we'll implement a simpler approach by searching within a specific chat
+      // In production, you might want to create a separate collection for seizure-related messages
+      console.log(`Getting messages for seizure ${seizureId}`);
+      return [];
+    } catch (error) {
+      console.error('Error getting seizure messages:', error);
+      return [];
+    }
+  }
+
+  // Get unread urgent messages for a user
+  async getUnreadUrgentMessages(userId: string, userType: 'doctor' | 'patient'): Promise<ChatMessage[]> {
+    try {
+      if (!userId || userId === 'undefined') {
+        console.warn('getUnreadUrgentMessages called with invalid userId:', userId);
+        return [];
+      }
+
+      console.log('Getting unread urgent messages for user:', userId, 'type:', userType);
+      const chats = await this.getUserChats(userId, userType);
+      console.log('Found chats:', chats.length);
+      const urgentMessages: ChatMessage[] = [];
+
+      for (const chat of chats) {
+        if (!chat.id) {
+          console.warn('Chat has no ID, skipping:', chat);
+          continue;
+        }
+
+        const messages = await this.getChatMessages(chat.id, 20);
+        console.log(`Chat ${chat.id} has ${messages.length} messages`);
+        const unreadUrgent = messages.filter(msg => 
+          !msg.read && 
+          msg.isUrgent && 
+          msg.senderId !== userId
+        );
+        console.log(`Found ${unreadUrgent.length} unread urgent messages in chat ${chat.id}`);
+        urgentMessages.push(...unreadUrgent);
+      }
+
+      const sortedMessages = urgentMessages.sort((a, b) => 
+        new Date(b.timestamp?.toDate?.() || b.timestamp).getTime() - 
+        new Date(a.timestamp?.toDate?.() || a.timestamp).getTime()
+      );
+      
+      console.log('Total unread urgent messages:', sortedMessages.length);
+      return sortedMessages;
+    } catch (error) {
+      console.error('Error getting unread urgent messages:', error);
+      return [];
     }
   }
 }
