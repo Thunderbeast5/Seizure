@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useCallback, useEffect, useState } from "react";
+import { Alert } from "react-native";
+import { useAuth } from "../contexts/AuthContext";
+import { chatService } from "../services/chatService";
+import { doctorService } from "../services/doctorService";
 import {
     Caregiver,
     ChildInfo,
@@ -8,11 +10,13 @@ import {
     EmergencyContact,
     ProfileData,
     profileService,
-    ProfileSettings
-} from '../services/profileService';
+    ProfileSettings,
+} from "../services/profileService";
 
 export const useProfile = () => {
-  const { user, userData } = useAuth();
+  const authContext = useAuth();
+  const user = authContext?.user;
+  const userData = authContext?.userData;
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,23 +24,23 @@ export const useProfile = () => {
   // Initialize default profile structure
   const initializeDefaultProfile = useCallback((): ProfileData => {
     return {
-      userId: user?.uid || '',
+      userId: user?.uid || "",
       child: {
-        name: userData?.name || '',
+        name: userData?.name || "",
         age: userData?.age || 0,
-        birthDate: '',
-        gender: userData?.gender || '',
-        weight: '',
-        height: '',
-        bloodType: userData?.bloodGroup || '',
-        allergies: '',
-        photo: `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || 'User'}`
+        birthDate: "",
+        gender: userData?.gender || "",
+        weight: "",
+        height: "",
+        bloodType: userData?.bloodGroup || "",
+        allergies: "",
+        photo: `https://api.dicebear.com/7.x/initials/svg?seed=${userData?.name || "User"}`,
       },
       diagnosis: {
-        type: userData?.seizureType || '',
-        diagnosisDate: '',
-        diagnosedBy: '',
-        notes: ''
+        type: userData?.seizureType || "",
+        diagnosisDate: "",
+        diagnosedBy: "",
+        notes: "",
       },
       caregivers: [],
       emergencyContacts: [],
@@ -45,8 +49,8 @@ export const useProfile = () => {
         dataSharing: true,
         locationTracking: true,
         darkMode: false,
-        autoBackup: true
-      }
+        autoBackup: true,
+      },
     };
   }, [user?.uid, userData]);
 
@@ -60,7 +64,7 @@ export const useProfile = () => {
     try {
       setLoading(true);
       const userProfile = await profileService.getUserProfile(user.uid);
-      
+
       if (userProfile) {
         setProfile(userProfile);
       } else {
@@ -70,18 +74,18 @@ export const useProfile = () => {
         setProfile(defaultProfile);
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
-      
+      console.error("Error loading profile:", error);
+
       try {
         // Try to create and save a default profile if loading failed
-        console.log('Creating default profile after load error...');
+        console.log("Creating default profile after load error...");
         const defaultProfile = initializeDefaultProfile();
         await profileService.saveUserProfile(user.uid, defaultProfile);
         setProfile(defaultProfile);
-        console.log('Default profile created successfully');
+        console.log("Default profile created successfully");
       } catch (createError) {
-        console.error('Error creating default profile:', createError);
-        Alert.alert('Error', 'Failed to create profile. Please try again.');
+        console.error("Error creating default profile:", createError);
+        Alert.alert("Error", "Failed to create profile. Please try again.");
         // Only set local profile as last resort
         const defaultProfile = initializeDefaultProfile();
         setProfile(defaultProfile);
@@ -91,274 +95,388 @@ export const useProfile = () => {
     }
   }, [user?.uid, initializeDefaultProfile]);
 
-  const updateChildInfo = useCallback(async (childInfo: Partial<ChildInfo>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+  const updateChildInfo = useCallback(
+    async (childInfo: Partial<ChildInfo>) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
 
-    try {
-      setSaving(true);
-      await profileService.updateChildInfo(user.uid, childInfo);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        child: { ...prev.child, ...childInfo }
-      } : null);
-      
-      Alert.alert('Success', 'Child information updated successfully!');
-    } catch (error) {
-      console.error('Error updating child info:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+      try {
+        setSaving(true);
+        await profileService.updateChildInfo(user.uid, childInfo);
 
-  const updateDiagnosisInfo = useCallback(async (diagnosisInfo: Partial<DiagnosisInfo>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                child: { ...prev.child, ...childInfo },
+              }
+            : null,
+        );
 
-    try {
-      setSaving(true);
-      await profileService.updateDiagnosisInfo(user.uid, diagnosisInfo);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        diagnosis: { ...prev.diagnosis, ...diagnosisInfo }
-      } : null);
-      
-      Alert.alert('Success', 'Diagnosis information updated successfully!');
-    } catch (error) {
-      console.error('Error updating diagnosis info:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+        Alert.alert("Success", "Child information updated successfully!");
+      } catch (error) {
+        console.error("Error updating child info:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
 
-  const addCaregiver = useCallback(async (caregiver: Omit<Caregiver, 'id'>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+  const updateDiagnosisInfo = useCallback(
+    async (diagnosisInfo: Partial<DiagnosisInfo>) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
 
-    try {
-      setSaving(true);
-      const caregiverId = await profileService.addCaregiver(user.uid, caregiver);
-      
-      // Update local state
-      const newCaregiver: Caregiver = { id: caregiverId, ...caregiver };
-      setProfile(prev => prev ? {
-        ...prev,
-        caregivers: [...prev.caregivers, newCaregiver]
-      } : null);
-      
-      Alert.alert('Success', 'Caregiver added successfully!');
-      return caregiverId;
-    } catch (error) {
-      console.error('Error adding caregiver:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+      try {
+        setSaving(true);
+        await profileService.updateDiagnosisInfo(user.uid, diagnosisInfo);
 
-  const updateCaregiver = useCallback(async (caregiverId: string, caregiverData: Partial<Caregiver>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                diagnosis: { ...prev.diagnosis, ...diagnosisInfo },
+              }
+            : null,
+        );
 
-    try {
-      setSaving(true);
-      await profileService.updateCaregiver(user.uid, caregiverId, caregiverData);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        caregivers: prev.caregivers.map(caregiver =>
-          caregiver.id === caregiverId ? { ...caregiver, ...caregiverData } : caregiver
-        )
-      } : null);
-      
-      Alert.alert('Success', 'Caregiver updated successfully!');
-    } catch (error) {
-      console.error('Error updating caregiver:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+        Alert.alert("Success", "Diagnosis information updated successfully!");
+      } catch (error) {
+        console.error("Error updating diagnosis info:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
 
-  const deleteCaregiver = useCallback(async (caregiverId: string) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+  const addCaregiver = useCallback(
+    async (caregiver: Omit<Caregiver, "id">) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
 
-    try {
-      setSaving(true);
-      await profileService.deleteCaregiver(user.uid, caregiverId);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        caregivers: prev.caregivers.filter(caregiver => caregiver.id !== caregiverId)
-      } : null);
-      
-      Alert.alert('Success', 'Caregiver deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting caregiver:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+      try {
+        setSaving(true);
+        const caregiverId = await profileService.addCaregiver(
+          user.uid,
+          caregiver,
+        );
 
-  const addEmergencyContact = useCallback(async (contact: Omit<EmergencyContact, 'id'>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+        // Update local state
+        const newCaregiver: Caregiver = { id: caregiverId, ...caregiver };
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                caregivers: [...prev.caregivers, newCaregiver],
+              }
+            : null,
+        );
 
-    try {
-      setSaving(true);
-      const contactId = await profileService.addEmergencyContact(user.uid, contact);
-      
-      // Update local state
-      const newContact: EmergencyContact = { id: contactId, ...contact };
-      setProfile(prev => prev ? {
-        ...prev,
-        emergencyContacts: [...prev.emergencyContacts, newContact]
-      } : null);
-      
-      Alert.alert('Success', 'Emergency contact added successfully!');
-      return contactId;
-    } catch (error) {
-      console.error('Error adding emergency contact:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+        Alert.alert("Success", "Caregiver added successfully!");
+        return caregiverId;
+      } catch (error) {
+        console.error("Error adding caregiver:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
 
-  const updateEmergencyContact = useCallback(async (contactId: string, contactData: Partial<EmergencyContact>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+  const updateCaregiver = useCallback(
+    async (caregiverId: string, caregiverData: Partial<Caregiver>) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
 
-    try {
-      setSaving(true);
-      await profileService.updateEmergencyContact(user.uid, contactId, contactData);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        emergencyContacts: prev.emergencyContacts.map(contact =>
-          contact.id === contactId ? { ...contact, ...contactData } : contact
-        )
-      } : null);
-      
-      Alert.alert('Success', 'Emergency contact updated successfully!');
-    } catch (error) {
-      console.error('Error updating emergency contact:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+      try {
+        setSaving(true);
+        await profileService.updateCaregiver(
+          user.uid,
+          caregiverId,
+          caregiverData,
+        );
 
-  const deleteEmergencyContact = useCallback(async (contactId: string) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                caregivers: prev.caregivers.map((caregiver) =>
+                  caregiver.id === caregiverId
+                    ? { ...caregiver, ...caregiverData }
+                    : caregiver,
+                ),
+              }
+            : null,
+        );
 
-    try {
-      setSaving(true);
-      await profileService.deleteEmergencyContact(user.uid, contactId);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        emergencyContacts: prev.emergencyContacts.filter(contact => contact.id !== contactId)
-      } : null);
-      
-      Alert.alert('Success', 'Emergency contact deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting emergency contact:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+        Alert.alert("Success", "Caregiver updated successfully!");
+      } catch (error) {
+        console.error("Error updating caregiver:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
 
-  const updateSettings = useCallback(async (settings: Partial<ProfileSettings>) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+  const deleteCaregiver = useCallback(
+    async (caregiverId: string) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
 
-    try {
-      setSaving(true);
-      await profileService.updateSettings(user.uid, settings);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        settings: { ...prev.settings, ...settings }
-      } : null);
-      
-      Alert.alert('Success', 'Settings updated successfully!');
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+      try {
+        setSaving(true);
+        await profileService.deleteCaregiver(user.uid, caregiverId);
+
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                caregivers: prev.caregivers.filter(
+                  (caregiver) => caregiver.id !== caregiverId,
+                ),
+              }
+            : null,
+        );
+
+        Alert.alert("Success", "Caregiver deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting caregiver:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
+
+  const addEmergencyContact = useCallback(
+    async (contact: Omit<EmergencyContact, "id">) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
+
+      try {
+        setSaving(true);
+        const contactId = await profileService.addEmergencyContact(
+          user.uid,
+          contact,
+        );
+
+        // Update local state
+        const newContact: EmergencyContact = { id: contactId, ...contact };
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                emergencyContacts: [...prev.emergencyContacts, newContact],
+              }
+            : null,
+        );
+
+        Alert.alert("Success", "Emergency contact added successfully!");
+        return contactId;
+      } catch (error) {
+        console.error("Error adding emergency contact:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
+
+  const updateEmergencyContact = useCallback(
+    async (contactId: string, contactData: Partial<EmergencyContact>) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
+
+      try {
+        setSaving(true);
+        await profileService.updateEmergencyContact(
+          user.uid,
+          contactId,
+          contactData,
+        );
+
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                emergencyContacts: prev.emergencyContacts.map((contact) =>
+                  contact.id === contactId
+                    ? { ...contact, ...contactData }
+                    : contact,
+                ),
+              }
+            : null,
+        );
+
+        Alert.alert("Success", "Emergency contact updated successfully!");
+      } catch (error) {
+        console.error("Error updating emergency contact:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
+
+  const deleteEmergencyContact = useCallback(
+    async (contactId: string) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
+
+      try {
+        setSaving(true);
+        await profileService.deleteEmergencyContact(user.uid, contactId);
+
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                emergencyContacts: prev.emergencyContacts.filter(
+                  (contact) => contact.id !== contactId,
+                ),
+              }
+            : null,
+        );
+
+        Alert.alert("Success", "Emergency contact deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting emergency contact:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
+
+  const updateSettings = useCallback(
+    async (settings: Partial<ProfileSettings>) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
+
+      try {
+        setSaving(true);
+        await profileService.updateSettings(user.uid, settings);
+
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                settings: { ...prev.settings, ...settings },
+              }
+            : null,
+        );
+
+        Alert.alert("Success", "Settings updated successfully!");
+      } catch (error) {
+        console.error("Error updating settings:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid],
+  );
 
   // Assign doctor to patient
-  const assignDoctor = useCallback(async (doctorId: string) => {
-    if (!user?.uid) {
-      throw new Error('User not authenticated');
-    }
+  const assignDoctor = useCallback(
+    async (doctorId: string) => {
+      if (!user?.uid) {
+        throw new Error("User not authenticated");
+      }
 
-    try {
-      setSaving(true);
-      await profileService.assignDoctor(user.uid, doctorId);
-      
-      // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        doctorId
-      } : null);
-      
-      Alert.alert('Success', 'Doctor assigned successfully!');
-    } catch (error) {
-      console.error('Error assigning doctor:', error);
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }, [user?.uid]);
+      try {
+        setSaving(true);
+        await profileService.assignDoctor(user.uid, doctorId);
+
+        // Create chat immediately so it shows up in chat list even before first message
+        try {
+          const doctor = await doctorService.getDoctorById(doctorId);
+          const doctorName = doctor?.name || "Doctor";
+          const patientName = userData?.name || "Patient";
+          await chatService.createOrGetChat({
+            doctorId,
+            patientId: user.uid,
+            doctorName,
+            patientName,
+          });
+        } catch (e) {
+          console.warn(
+            "Failed to create chat during doctor assignment (non-critical):",
+            e,
+          );
+        }
+
+        // Update local state
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                doctorId,
+              }
+            : null,
+        );
+
+        Alert.alert("Success", "Doctor assigned successfully!");
+      } catch (error) {
+        console.error("Error assigning doctor:", error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [user?.uid, userData?.name],
+  );
 
   // Remove doctor assignment
   const removeDoctor = useCallback(async () => {
     if (!user?.uid) {
-      throw new Error('User not authenticated');
+      throw new Error("User not authenticated");
     }
 
     try {
       setSaving(true);
       await profileService.removeDoctor(user.uid);
-      
+
       // Update local state
-      setProfile(prev => prev ? {
-        ...prev,
-        doctorId: undefined
-      } : null);
-      
-      Alert.alert('Success', 'Doctor removed successfully!');
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              doctorId: undefined,
+            }
+          : null,
+      );
+
+      Alert.alert("Success", "Doctor removed successfully!");
     } catch (error) {
-      console.error('Error removing doctor:', error);
+      console.error("Error removing doctor:", error);
       throw error;
     } finally {
       setSaving(false);
@@ -373,19 +491,22 @@ export const useProfile = () => {
       return;
     }
 
-    console.log('Setting up profile listener for user:', user.uid);
-    
-    const unsubscribe = profileService.subscribeToProfile(user.uid, (profileData) => {
-      console.log('Profile data updated:', profileData);
-      if (profileData) {
-        setProfile(profileData);
-      } else {
-        // Create default profile if none exists
-        const defaultProfile = initializeDefaultProfile();
-        setProfile(defaultProfile);
-      }
-      setLoading(false);
-    });
+    console.log("Setting up profile listener for user:", user.uid);
+
+    const unsubscribe = profileService.subscribeToProfile(
+      user.uid,
+      (profileData) => {
+        console.log("Profile data updated:", profileData);
+        if (profileData) {
+          setProfile(profileData);
+        } else {
+          // Create default profile if none exists
+          const defaultProfile = initializeDefaultProfile();
+          setProfile(defaultProfile);
+        }
+        setLoading(false);
+      },
+    );
 
     return () => unsubscribe();
   }, [user?.uid, initializeDefaultProfile]);
@@ -407,4 +528,4 @@ export const useProfile = () => {
     assignDoctor,
     removeDoctor,
   };
-}; 
+};

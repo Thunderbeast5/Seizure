@@ -83,6 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setDoctorData(doc.data() as DoctorData);
               }
             });
+          } else {
+            // Doctor portal access requires a doctor profile document.
+            // If it doesn't exist, Firestore rules will deny patient/profile access.
+            await signOut(auth);
+            setUser(null);
+            setDoctorData(null);
           }
         } catch (error) {
           console.error('Error fetching doctor data:', error);
@@ -101,7 +107,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      const doctorDocRef = doc(db, 'doctors', userCredential.user.uid);
+      const doctorDoc = await getDoc(doctorDocRef);
+      if (!doctorDoc.exists()) {
+        await signOut(auth);
+        throw new Error('No doctor profile found for this account. Please register as a doctor.');
+      }
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;

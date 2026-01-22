@@ -48,6 +48,8 @@ export const EmergencyAlerts: React.FC<EmergencyAlertsProps> = ({ doctorId }) =>
       return;
     }
 
+    console.log('EmergencyAlerts: Setting up listeners for doctorId:', doctorId);
+
     // Get connected patients first, then listen for their emergency alerts
     const setupEmergencyListener = async () => {
       try {
@@ -92,13 +94,10 @@ export const EmergencyAlerts: React.FC<EmergencyAlertsProps> = ({ doctorId }) =>
               timestamp: alert.timestamp
             })));
             
-            // Filter alerts to only show those from connected patients
-            const filteredAlerts = patientIds.length > 0 
-              ? allAlerts.filter(alert => patientIds.includes(alert.userId))
-              : [];
-            
-            console.log('Showing alerts:', filteredAlerts.length);
-            setAlerts(filteredAlerts);
+            // For emergency situations, show all alerts to doctors
+            // In a real emergency, doctors should see all alerts, not just from connected patients
+            console.log('Showing all emergency alerts to doctor:', allAlerts.length);
+            setAlerts(allAlerts);
             setLoading(false);
           }, (error) => {
             console.error('Error listening to emergency alerts:', error);
@@ -433,8 +432,13 @@ export const EmergencyAlerts: React.FC<EmergencyAlertsProps> = ({ doctorId }) =>
           <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No emergency alerts</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Emergency alerts from your patients will appear here.
+            Emergency alerts from patients will appear here.
           </p>
+          <div className="mt-4 text-xs text-gray-400">
+            <p>Debug Info:</p>
+            <p>Doctor ID: {doctorId}</p>
+            <p>Listening for alerts in collection: emergencyAlerts</p>
+          </div>
         </div>
       )}
     </div>

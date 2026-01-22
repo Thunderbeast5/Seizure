@@ -1,19 +1,29 @@
-import { collection, addDoc, doc, updateDoc, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
-import { db } from '../firebase.config';
-import LocationService, { LocationData } from './locationService';
-import { chatService } from './chatService';
-import { notificationService } from './notificationService';
-import { Alert, Linking, Platform } from 'react-native';
+import {
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    updateDoc,
+    where,
+} from "firebase/firestore";
+import { Alert, Linking, Platform } from "react-native";
+import { db } from "../firebase.config";
+import LocationService, { LocationData } from "./locationService";
+import { notificationService } from "./notificationService";
 
 export interface EmergencyAlert {
   id?: string;
   userId: string;
   userEmail: string;
   userName: string;
-  alertType: 'seizure' | 'medical' | 'general';
+  alertType: "seizure" | "medical" | "general";
   location: LocationData;
   timestamp: number;
-  status: 'active' | 'acknowledged' | 'resolved';
+  status: "active" | "acknowledged" | "resolved";
   message?: string;
   contactsNotified: string[];
   doctorNotified: boolean;
@@ -48,20 +58,30 @@ class EmergencyService {
     userId: string,
     userEmail: string,
     userName: string,
-    alertType: 'seizure' | 'medical' | 'general' = 'seizure',
-    customMessage?: string
+    alertType: "seizure" | "medical" | "general" = "seizure",
+    customMessage?: string,
   ): Promise<EmergencyAlert | null> {
     try {
       // Get current location
       const location = await LocationService.getCurrentLocation();
       if (!location) {
         Alert.alert(
-          'Location Required',
-          'Unable to get your current location. Emergency alert will be sent without location data.',
+          "Location Required",
+          "Unable to get your current location. Emergency alert will be sent without location data.",
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Send Anyway', onPress: () => this.sendAlertWithoutLocation(userId, userEmail, userName, alertType, customMessage) }
-          ]
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Send Anyway",
+              onPress: () =>
+                this.sendAlertWithoutLocation(
+                  userId,
+                  userEmail,
+                  userName,
+                  alertType,
+                  customMessage,
+                ),
+            },
+          ],
         );
         return null;
       }
@@ -74,7 +94,7 @@ class EmergencyService {
         alertType,
         location,
         timestamp: Date.now(),
-        status: 'active',
+        status: "active",
         message: customMessage || this.getDefaultMessage(alertType),
         contactsNotified: [],
         doctorNotified: false,
@@ -82,7 +102,7 @@ class EmergencyService {
       };
 
       // Save to Firebase
-      const docRef = await addDoc(collection(db, 'emergencyAlerts'), alert);
+      const docRef = await addDoc(collection(db, "emergencyAlerts"), alert);
       alert.id = docRef.id;
       this.activeAlert = alert;
 
@@ -93,17 +113,29 @@ class EmergencyService {
       try {
         await this.notifyEmergencyContacts(alert);
       } catch (error) {
-        console.error('Error notifying emergency contacts (non-critical):', error);
+        console.error(
+          "Error notifying emergency contacts (non-critical):",
+          error,
+        );
       }
 
-      // Skip additional doctor notification since main emergency alert system is working
-      console.log('✅ Emergency alert system working - doctors will see alerts in portal');
-      alert.doctorNotified = true; // Mark as notified since they can see it in portal
+      // Notify connected doctor (creates emergencyNotifications for doctor portal)
+      try {
+        await this.notifyConnectedDoctors(alert);
+      } catch (error) {
+        console.error(
+          "Error notifying connected doctors (non-critical):",
+          error,
+        );
+      }
 
       return alert;
     } catch (error) {
-      console.error('Error sending emergency alert:', error);
-      Alert.alert('Error', 'Failed to send emergency alert. Please try again or call emergency services directly.');
+      console.error("Error sending emergency alert:", error);
+      Alert.alert(
+        "Error",
+        "Failed to send emergency alert. Please try again or call emergency services directly.",
+      );
       return null;
     }
   }
@@ -115,8 +147,8 @@ class EmergencyService {
     userId: string,
     userEmail: string,
     userName: string,
-    alertType: 'seizure' | 'medical' | 'general',
-    customMessage?: string
+    alertType: "seizure" | "medical" | "general",
+    customMessage?: string,
   ): Promise<void> {
     try {
       const alert: EmergencyAlert = {
@@ -129,24 +161,24 @@ class EmergencyService {
           longitude: 0,
           accuracy: null,
           timestamp: Date.now(),
-          address: 'Location unavailable'
+          address: "Location unavailable",
         },
         timestamp: Date.now(),
-        status: 'active',
+        status: "active",
         message: customMessage || this.getDefaultMessage(alertType),
         contactsNotified: [],
         doctorNotified: false,
         emergencyServicesContacted: false,
       };
 
-      const docRef = await addDoc(collection(db, 'emergencyAlerts'), alert);
+      const docRef = await addDoc(collection(db, "emergencyAlerts"), alert);
       alert.id = docRef.id;
       this.activeAlert = alert;
 
       await this.notifyEmergencyContacts(alert);
       await this.notifyConnectedDoctors(alert);
     } catch (error) {
-      console.error('Error sending alert without location:', error);
+      console.error("Error sending alert without location:", error);
     }
   }
 
@@ -157,16 +189,16 @@ class EmergencyService {
     try {
       // Get user's emergency contacts
       const contacts = await this.getEmergencyContacts(alert.userId);
-      
+
       for (const contact of contacts) {
         try {
           // Create emergency message
           const message = this.createEmergencyMessage(alert, contact);
-          
+
           // Send SMS (this would require a service like Twilio in production)
           // For now, we'll create a notification record
           await this.logContactNotification(alert.id!, contact, message);
-          
+
           alert.contactsNotified.push(contact.id);
         } catch (error) {
           console.error(`Error notifying contact ${contact.name}:`, error);
@@ -175,12 +207,12 @@ class EmergencyService {
 
       // Update alert in Firebase
       if (alert.id) {
-        await updateDoc(doc(db, 'emergencyAlerts', alert.id), {
-          contactsNotified: alert.contactsNotified
+        await updateDoc(doc(db, "emergencyAlerts", alert.id), {
+          contactsNotified: alert.contactsNotified,
         });
       }
     } catch (error) {
-      console.error('Error notifying emergency contacts:', error);
+      console.error("Error notifying emergency contacts:", error);
     }
   }
 
@@ -189,23 +221,18 @@ class EmergencyService {
    */
   private async notifyConnectedDoctors(alert: EmergencyAlert): Promise<void> {
     try {
-      // Get user's profile to find connected doctors
-      const userProfileQuery = query(
-        collection(db, 'profiles'),
-        where('userId', '==', alert.userId),
-        limit(1)
-      );
-      const userSnapshot = await getDocs(userProfileQuery);
-      
-      if (userSnapshot.empty) {
-        console.log('No user profile found for userId:', alert.userId);
+      // Profiles are stored by uid as document ID
+      const userProfileDoc = await getDoc(doc(db, "profiles", alert.userId));
+
+      if (!userProfileDoc.exists()) {
+        console.log("No user profile found for userId:", alert.userId);
         return;
       }
-      
-      const userProfile = userSnapshot.docs[0].data();
-      
+
+      const userProfile = userProfileDoc.data() as any;
+
       if (!userProfile.doctorId) {
-        console.log('No doctorId found in user profile');
+        console.log("No doctorId found in user profile");
         return;
       }
 
@@ -221,113 +248,127 @@ class EmergencyService {
           message: this.createDoctorEmergencyMessage(alert),
           timestamp: Date.now(),
           read: false,
-          urgent: true
+          urgent: true,
         };
 
         // Save emergency notification directly to Firestore
-        await addDoc(collection(db, 'emergencyNotifications'), emergencyNotification);
+        await addDoc(
+          collection(db, "emergencyNotifications"),
+          emergencyNotification,
+        );
 
         alert.doctorNotified = true;
-        console.log('Doctor notified successfully via emergency notification');
+        console.log("Doctor notified successfully via emergency notification");
       } catch (error) {
         console.error(`Error notifying doctor ${userProfile.doctorId}:`, error);
       }
 
       // Update alert in Firebase
       if (alert.id) {
-        await updateDoc(doc(db, 'emergencyAlerts', alert.id), {
-          doctorNotified: alert.doctorNotified
+        await updateDoc(doc(db, "emergencyAlerts", alert.id), {
+          doctorNotified: alert.doctorNotified,
         });
       }
     } catch (error) {
-      console.error('Error notifying doctors:', error);
+      console.error("Error notifying doctors:", error);
     }
   }
 
   /**
    * Send push notification for emergency
    */
-  private async sendEmergencyNotification(alert: EmergencyAlert): Promise<void> {
+  private async sendEmergencyNotification(
+    alert: EmergencyAlert,
+  ): Promise<void> {
     try {
       const title = `🚨 Emergency Alert - ${alert.alertType.toUpperCase()}`;
-      const body = alert.location.address 
+      const body = alert.location.address
         ? `Emergency at: ${alert.location.address}`
         : `Emergency at: ${alert.location.latitude.toFixed(6)}, ${alert.location.longitude.toFixed(6)}`;
 
-      await notificationService.sendUrgentMedicalNotification(
-        title,
-        body,
-        {
-          alertId: alert.id,
-          alertType: alert.alertType,
-          location: JSON.stringify(alert.location)
-        }
-      );
+      await notificationService.sendUrgentMedicalNotification(title, body, {
+        alertId: alert.id,
+        alertType: alert.alertType,
+        location: JSON.stringify(alert.location),
+      });
     } catch (error) {
-      console.error('Error sending emergency notification:', error);
+      console.error("Error sending emergency notification:", error);
     }
   }
 
   /**
    * Get emergency contacts for user
    */
-  private async getEmergencyContacts(userId: string): Promise<EmergencyContact[]> {
+  private async getEmergencyContacts(
+    userId: string,
+  ): Promise<EmergencyContact[]> {
     try {
       const q = query(
-        collection(db, 'emergencyContacts'),
-        where('userId', '==', userId)
+        collection(db, "emergencyContacts"),
+        where("userId", "==", userId),
       );
       const querySnapshot = await getDocs(q);
       const contacts: EmergencyContact[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         contacts.push({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         } as EmergencyContact);
       });
-      
+
       return contacts;
     } catch (error) {
-      console.error('Error getting emergency contacts:', error);
+      console.error("Error getting emergency contacts:", error);
       return [];
     }
   }
 
-
   /**
    * Create emergency message for contacts
    */
-  private createEmergencyMessage(alert: EmergencyAlert, contact: EmergencyContact): string {
-    const locationText = alert.location.address || 
+  private createEmergencyMessage(
+    alert: EmergencyAlert,
+    contact: EmergencyContact,
+  ): string {
+    const locationText =
+      alert.location.address ||
       `${alert.location.latitude.toFixed(6)}, ${alert.location.longitude.toFixed(6)}`;
-    
-    const mapsUrl = LocationService.generateMapsUrl(alert.location.latitude, alert.location.longitude);
-    
-    return `🚨 EMERGENCY ALERT 🚨\n\n` +
-           `${alert.userName} needs immediate help!\n\n` +
-           `Type: ${alert.alertType.toUpperCase()}\n` +
-           `Time: ${new Date(alert.timestamp).toLocaleString()}\n` +
-           `Location: ${locationText}\n\n` +
-           `View location: ${mapsUrl}\n\n` +
-           `${alert.message}\n\n` +
-           `Please respond immediately or call emergency services.`;
+
+    const mapsUrl = LocationService.generateMapsUrl(
+      alert.location.latitude,
+      alert.location.longitude,
+    );
+
+    return (
+      `🚨 EMERGENCY ALERT 🚨\n\n` +
+      `${alert.userName} needs immediate help!\n\n` +
+      `Type: ${alert.alertType.toUpperCase()}\n` +
+      `Time: ${new Date(alert.timestamp).toLocaleString()}\n` +
+      `Location: ${locationText}\n\n` +
+      `View location: ${mapsUrl}\n\n` +
+      `${alert.message}\n\n` +
+      `Please respond immediately or call emergency services.`
+    );
   }
 
   /**
    * Create emergency message for doctors
    */
   private createDoctorEmergencyMessage(alert: EmergencyAlert): string {
-    const locationText = alert.location.address || 
+    const locationText =
+      alert.location.address ||
       `${alert.location.latitude.toFixed(6)}, ${alert.location.longitude.toFixed(6)}`;
-    
-    return `🚨 PATIENT EMERGENCY ALERT\n\n` +
-           `Patient: ${alert.userName}\n` +
-           `Type: ${alert.alertType.toUpperCase()}\n` +
-           `Time: ${new Date(alert.timestamp).toLocaleString()}\n` +
-           `Location: ${locationText}\n\n` +
-           `${alert.message}\n\n` +
-           `Immediate medical attention may be required.`;
+
+    return (
+      `🚨 PATIENT EMERGENCY ALERT\n\n` +
+      `Patient: ${alert.userName}\n` +
+      `Type: ${alert.alertType.toUpperCase()}\n` +
+      `Time: ${new Date(alert.timestamp).toLocaleString()}\n` +
+      `Location: ${locationText}\n\n` +
+      `${alert.message}\n\n` +
+      `Immediate medical attention may be required.`
+    );
   }
 
   /**
@@ -336,58 +377,63 @@ class EmergencyService {
   private async logContactNotification(
     alertId: string,
     contact: EmergencyContact,
-    message: string
+    message: string,
   ): Promise<void> {
     try {
-      await addDoc(collection(db, 'emergencyNotifications'), {
+      await addDoc(collection(db, "emergencyNotifications"), {
         alertId,
         contactId: contact.id,
         contactName: contact.name,
         contactPhone: contact.phone,
         message,
         timestamp: Date.now(),
-        method: 'sms',
-        status: 'sent'
+        method: "sms",
+        status: "sent",
       });
     } catch (error) {
-      console.error('Error logging contact notification:', error);
+      console.error("Error logging contact notification:", error);
     }
   }
 
   /**
    * Get default message for alert type
    */
-  private getDefaultMessage(alertType: 'seizure' | 'medical' | 'general'): string {
+  private getDefaultMessage(
+    alertType: "seizure" | "medical" | "general",
+  ): string {
     switch (alertType) {
-      case 'seizure':
-        return 'Patient is experiencing a seizure and needs immediate assistance.';
-      case 'medical':
-        return 'Patient is experiencing a medical emergency and needs immediate assistance.';
-      case 'general':
-        return 'Patient needs immediate assistance.';
+      case "seizure":
+        return "Patient is experiencing a seizure and needs immediate assistance.";
+      case "medical":
+        return "Patient is experiencing a medical emergency and needs immediate assistance.";
+      case "general":
+        return "Patient needs immediate assistance.";
       default:
-        return 'Emergency assistance needed.';
+        return "Emergency assistance needed.";
     }
   }
 
   /**
    * Update alert status
    */
-  async updateAlertStatus(alertId: string, status: 'acknowledged' | 'resolved'): Promise<void> {
+  async updateAlertStatus(
+    alertId: string,
+    status: "acknowledged" | "resolved",
+  ): Promise<void> {
     try {
-      await updateDoc(doc(db, 'emergencyAlerts', alertId), {
+      await updateDoc(doc(db, "emergencyAlerts", alertId), {
         status,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       });
 
       if (this.activeAlert && this.activeAlert.id === alertId) {
         this.activeAlert.status = status;
-        if (status === 'resolved') {
+        if (status === "resolved") {
           this.activeAlert = null;
         }
       }
     } catch (error) {
-      console.error('Error updating alert status:', error);
+      console.error("Error updating alert status:", error);
     }
   }
 
@@ -401,28 +447,34 @@ class EmergencyService {
   /**
    * Call emergency services
    */
-  async callEmergencyServices(emergencyNumber: string = '911'): Promise<void> {
+  async callEmergencyServices(emergencyNumber: string = "911"): Promise<void> {
     try {
       const url = `tel:${emergencyNumber}`;
       const canOpen = await Linking.canOpenURL(url);
-      
+
       if (canOpen) {
         await Linking.openURL(url);
-        
+
         // Log that emergency services were contacted
         if (this.activeAlert && this.activeAlert.id) {
-          await updateDoc(doc(db, 'emergencyAlerts', this.activeAlert.id), {
+          await updateDoc(doc(db, "emergencyAlerts", this.activeAlert.id), {
             emergencyServicesContacted: true,
-            emergencyServicesContactedAt: Date.now()
+            emergencyServicesContactedAt: Date.now(),
           });
           this.activeAlert.emergencyServicesContacted = true;
         }
       } else {
-        Alert.alert('Error', 'Unable to make phone call. Please dial emergency services manually.');
+        Alert.alert(
+          "Error",
+          "Unable to make phone call. Please dial emergency services manually.",
+        );
       }
     } catch (error) {
-      console.error('Error calling emergency services:', error);
-      Alert.alert('Error', 'Unable to make phone call. Please dial emergency services manually.');
+      console.error("Error calling emergency services:", error);
+      Alert.alert(
+        "Error",
+        "Unable to make phone call. Please dial emergency services manually.",
+      );
     }
   }
 
@@ -431,48 +483,52 @@ class EmergencyService {
    */
   async openLocationInMaps(latitude: number, longitude: number): Promise<void> {
     try {
-      const url = Platform.OS === 'ios' 
-        ? LocationService.generateAppleMapsUrl(latitude, longitude)
-        : LocationService.generateMapsUrl(latitude, longitude);
-      
+      const url =
+        Platform.OS === "ios"
+          ? LocationService.generateAppleMapsUrl(latitude, longitude)
+          : LocationService.generateMapsUrl(latitude, longitude);
+
       const canOpen = await Linking.canOpenURL(url);
-      
+
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', 'Unable to open maps application.');
+        Alert.alert("Error", "Unable to open maps application.");
       }
     } catch (error) {
-      console.error('Error opening maps:', error);
-      Alert.alert('Error', 'Unable to open maps application.');
+      console.error("Error opening maps:", error);
+      Alert.alert("Error", "Unable to open maps application.");
     }
   }
 
   /**
    * Get recent emergency alerts for user
    */
-  async getRecentAlerts(userId: string, limitCount: number = 10): Promise<EmergencyAlert[]> {
+  async getRecentAlerts(
+    userId: string,
+    limitCount: number = 10,
+  ): Promise<EmergencyAlert[]> {
     try {
       const q = query(
-        collection(db, 'emergencyAlerts'),
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc'),
-        limit(limitCount)
+        collection(db, "emergencyAlerts"),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc"),
+        limit(limitCount),
       );
-      
+
       const querySnapshot = await getDocs(q);
       const alerts: EmergencyAlert[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         alerts.push({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         } as EmergencyAlert);
       });
-      
+
       return alerts;
     } catch (error) {
-      console.error('Error getting recent alerts:', error);
+      console.error("Error getting recent alerts:", error);
       return [];
     }
   }
