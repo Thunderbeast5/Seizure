@@ -1,7 +1,10 @@
 // firebase.config.ts
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApps, initializeApp } from "firebase/app";
+import * as firebaseAuth from "firebase/auth";
+import { getAuth, initializeAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { Platform } from "react-native";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -10,7 +13,7 @@ const firebaseConfig = {
   projectId: "seizure-tracker-166f0",
   storageBucket: "seizure-tracker-166f0.firebasestorage.app",
   messagingSenderId: "596929603017",
-  appId: "1:596929603017:web:881986f40201a8043fb418"
+  appId: "1:596929603017:web:881986f40201a8043fb418",
 };
 
 // Initialize Firebase only if it hasn't been initialized already
@@ -22,7 +25,14 @@ if (getApps().length === 0) {
 }
 
 // Initialize Auth - React Native Firebase Auth has automatic persistence
-const auth: Auth = getAuth(app);
+const auth =
+  Platform.OS === "web"
+    ? getAuth(app)
+    : initializeAuth(app, {
+        persistence: (firebaseAuth as any).getReactNativePersistence(
+          AsyncStorage,
+        ),
+      });
 
 // Initialize Firestore
 const db = getFirestore(app);

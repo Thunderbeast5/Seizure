@@ -1,112 +1,138 @@
 // index.tsx - Updated with multilingual support and fixed RTL handling
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
 // Removed BlurView import to fix native module error
-import FloatingChatbot from '@/components/FloatingChatbot';
-import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, Dimensions, Modal, Platform, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LanguageSelector } from '../../components/ui/LanguageSelector';
-import { useLanguage } from '../../contexts/LanguageContext';
+import FloatingChatbot from "@/components/FloatingChatbot";
+import { router } from "expo-router";
+import { useCallback, useState } from "react";
+import {
+    Alert,
+    Dimensions,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { LanguageSelector } from "../../components/ui/LanguageSelector";
+import { useLanguage } from "../../contexts/LanguageContext";
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isLanguageSelectorVisible, setIsLanguageSelectorVisible] = useState(false);
-  
+  const [isLanguageSelectorVisible, setIsLanguageSelectorVisible] =
+    useState(false);
+
   // Get language context and safe area insets
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  
+
   // Standardized card style to ensure all cards are exactly the same size
   const cardStyle = {
-    backgroundColor: 'white',
-    width: '48%' as const,
+    backgroundColor: "white",
+    width: "48%" as const,
     padding: 28,
     borderRadius: 16,
     marginBottom: 24,
-    alignItems: 'center' as const,
-    shadowColor: '#000',
+    alignItems: "center" as const,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
     minHeight: 220,
     maxHeight: 220,
-    justifyContent: 'space-between' as const,
+    justifyContent: "space-between" as const,
   };
-  
+
   // Debug: Log platform and insets for Android debugging
-  console.log('Platform:', Platform.OS);
-  console.log('Safe area insets:', insets);
-  console.log('Screen width:', screenWidth);
+  console.log("Platform:", Platform.OS);
+  console.log("Safe area insets:", insets);
+  console.log("Screen width:", screenWidth);
 
   // Remove the problematic useEffect for RTL
   // RTL should be handled at the app level, not component level
 
   // --- Handler for the menu button ---
   const handleMenuPress = useCallback(() => {
-    console.log('Menu button pressed!');
-    console.log('isDrawerOpen before:', isDrawerOpen);
-    
+    console.log("Menu button pressed!");
+    console.log("isDrawerOpen before:", isDrawerOpen);
+
     // Prevent multiple rapid presses
     if (isDrawerOpen) {
-      console.log('Drawer already open, ignoring press');
+      console.log("Drawer already open, ignoring press");
       return;
     }
-    
+
     setIsDrawerOpen(true);
-    console.log('Drawer opened!');
+    console.log("Drawer opened!");
   }, [isDrawerOpen]);
 
   const closeDrawer = useCallback(() => {
-    console.log('Closing drawer...');
+    console.log("Closing drawer...");
     setIsDrawerOpen(false);
-    console.log('Drawer closed!');
+    console.log("Drawer closed!");
   }, []);
 
   const handleSeizureDiary = useCallback(() => {
-    console.log('Attempting to navigate to seizure diary...');
+    console.log("Attempting to navigate to seizure diary...");
     try {
-      router.navigate('/screens/seizure-diary');
-      console.log('Navigation to seizure diary attempted');
+      router.navigate("/screens/seizure-diary");
+      console.log("Navigation to seizure diary attempted");
     } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('seizure_diary')}`);
+      console.error("Navigation error:", error);
+      Alert.alert(
+        t("navigation_error"),
+        `${t("could_not_navigate")} ${t("seizure_diary")}`,
+      );
     }
   }, [t]);
 
   const handleMedicationReminder = useCallback(() => {
-    console.log('Attempting to navigate to medication reminder...');
+    console.log("Attempting to navigate to medication reminder...");
     try {
-      router.navigate('/screens/medication-reminder');
-      console.log('Navigation to medication reminder attempted');
+      router.navigate("/screens/medication-reminder");
+      console.log("Navigation to medication reminder attempted");
     } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('medication_reminder')}`);
+      console.error("Navigation error:", error);
+      Alert.alert(
+        t("navigation_error"),
+        `${t("could_not_navigate")} ${t("medication_reminder")}`,
+      );
     }
   }, [t]);
 
   const handleDoctorConnect = useCallback(() => {
-    console.log('Attempting to navigate to doctor connect...');
+    console.log("Attempting to navigate to doctor connect...");
     try {
-      router.navigate('/screens/doctor-connect');
-      console.log('Navigation to doctor connect attempted');
+      router.navigate("/screens/doctor-connect");
+      console.log("Navigation to doctor connect attempted");
     } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('doctor_connect')}`);
+      console.error("Navigation error:", error);
+      Alert.alert(
+        t("navigation_error"),
+        `${t("could_not_navigate")} ${t("doctor_connect")}`,
+      );
     }
   }, [t]);
 
   const handleEducation = useCallback(() => {
-    console.log('Attempting to navigate to education...');
+    console.log("Attempting to navigate to education...");
     try {
-      router.navigate('/screens/education');
-      console.log('Navigation to education attempted');
+      router.navigate("/screens/education");
+      console.log("Navigation to education attempted");
     } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert(t('navigation_error'), `${t('could_not_navigate')} ${t('education')}`);
+      console.error("Navigation error:", error);
+      Alert.alert(
+        t("navigation_error"),
+        `${t("could_not_navigate")} ${t("education")}`,
+      );
     }
   }, [t]);
 
@@ -119,672 +145,700 @@ export default function HomeScreen() {
   }, [closeDrawer]);
 
   const handleGoToLogin = useCallback(() => {
-    router.replace('/login'); 
+    router.replace("/login");
   }, []);
 
   const DrawerMenu = () => {
-    console.log('DrawerMenu rendering, isDrawerOpen:', isDrawerOpen);
+    console.log("DrawerMenu rendering, isDrawerOpen:", isDrawerOpen);
     return (
-    <Modal
-      visible={isDrawerOpen}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={closeDrawer}
-    >
-      <View style={{ flex: 1 }}>
-        {/* Background Overlay */}
-        <View 
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 1,
-          }}
-        >
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            onPress={closeDrawer}
-            activeOpacity={1}
-          />
-        </View>
-
-        {/* Drawer Content - Slides from left */}
-        <View
-          style={{
-            position: 'absolute',
-            left: isRTL ? 'auto' : 0,
-            right: isRTL ? 0 : 'auto',
-            top: 0,
-            bottom: 0,
-            width: screenWidth * 0.85,
-            zIndex: 2,
-            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-            borderTopRightRadius: isRTL ? 0 : 20,
-            borderBottomRightRadius: isRTL ? 0 : 20,
-            borderTopLeftRadius: isRTL ? 20 : 0,
-            borderBottomLeftRadius: isRTL ? 20 : 0,
-            shadowColor: '#000',
-            shadowOffset: { width: isRTL ? -2 : 2, height: 0 },
-            shadowOpacity: 0.25,
-            shadowRadius: 10,
-            elevation: 10,
-            paddingTop: Platform.OS === 'ios' ? 50 : Math.max(insets.top + 10, 30),
-            paddingHorizontal: 20,
-            paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 20) : 20,
-          }}
-        >
-          {/* Drawer Header */}
-          <View 
+      <Modal
+        visible={isDrawerOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeDrawer}
+      >
+        <View style={{ flex: 1 }}>
+          {/* Background Overlay */}
+          <View
             style={{
-              flexDirection: isRTL ? 'row-reverse' : 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 32,
-              paddingBottom: 16,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              zIndex: 1,
             }}
           >
-            <Text 
-              style={{
-                fontSize: 24,
-                fontWeight: 'bold',
-                color: '#1E293B',
-                textAlign: isRTL ? 'right' : 'left',
-              }}
-            >
-              {t('menu')}
-            </Text>
-            <TouchableOpacity onPress={closeDrawer} style={{ padding: 8 }}>
-              <Ionicons name="close" size={28} color="#4A90E2" />
-            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={closeDrawer}
+              activeOpacity={1}
+            />
           </View>
 
-          {/* Menu Items */}
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Change Language Option */}
-            <TouchableOpacity 
+          {/* Drawer Content - Slides from left */}
+          <View
+            style={{
+              position: "absolute",
+              left: isRTL ? "auto" : 0,
+              right: isRTL ? 0 : "auto",
+              top: 0,
+              bottom: 0,
+              width: screenWidth * 0.85,
+              zIndex: 2,
+              backgroundColor: "rgba(255, 255, 255, 0.98)",
+              borderTopRightRadius: isRTL ? 0 : 20,
+              borderBottomRightRadius: isRTL ? 0 : 20,
+              borderTopLeftRadius: isRTL ? 20 : 0,
+              borderBottomLeftRadius: isRTL ? 20 : 0,
+              shadowColor: "#000",
+              shadowOffset: { width: isRTL ? -2 : 2, height: 0 },
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              elevation: 10,
+              paddingTop:
+                Platform.OS === "ios" ? 50 : Math.max(insets.top + 10, 30),
+              paddingHorizontal: 20,
+              paddingBottom:
+                Platform.OS === "android" ? Math.max(insets.bottom, 20) : 20,
+            }}
+          >
+            {/* Drawer Header */}
+            <View
               style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                flexDirection: isRTL ? "row-reverse" : "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 32,
+                paddingBottom: 16,
               }}
-              onPress={handleLanguageSelect}
             >
-              <Ionicons 
-                name="language" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              <Text
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  fontSize: 24,
+                  fontWeight: "bold",
+                  color: "#1E293B",
+                  textAlign: isRTL ? "right" : "left",
                 }}
               >
-                {t('change_language')}
+                {t("menu")}
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={closeDrawer} style={{ padding: 8 }}>
+                <Ionicons name="close" size={28} color="#4A90E2" />
+              </TouchableOpacity>
+            </View>
 
-            {/* Seizure Diary */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(handleSeizureDiary, 300);
-              }}
-            >
-              <Ionicons 
-                name="calendar" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+            {/* Menu Items */}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Change Language Option */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(74, 144, 226, 0.1)",
                 }}
+                onPress={handleLanguageSelect}
               >
-                {t('seizure_diary')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="language"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("change_language")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Medication Reminder */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(handleMedicationReminder, 300);
-              }}
-            >
-              <Ionicons 
-                name="medical" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* Seizure Diary */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(handleSeizureDiary, 300);
                 }}
               >
-                {t('medication_reminder')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="calendar"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("seizure_diary")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Doctor Connect */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(handleDoctorConnect, 300);
-              }}
-            >
-              <Ionicons 
-                name="people" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* Medication Reminder */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(handleMedicationReminder, 300);
                 }}
               >
-                {t('doctor_connect')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="medical"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("medication_reminder")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Education */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(handleEducation, 300);
-              }}
-            >
-              <Ionicons 
-                name="book" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* Doctor Connect */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(handleDoctorConnect, 300);
                 }}
               >
-                {t('education')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="people"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("doctor_connect")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Settings */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(() => {
-                  Alert.alert(t('settings'), t('settings_coming_soon'));
-                }, 300);
-              }}
-            >
-              <Ionicons 
-                name="settings" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* Education */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(handleEducation, 300);
                 }}
               >
-                {t('settings')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="book"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("education")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Help & Support */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(() => {
-                  Alert.alert(t('help_support'), t('help_coming_soon'));
-                }, 300);
-              }}
-            >
-              <Ionicons 
-                name="help-circle" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* Settings */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(() => {
+                    Alert.alert(t("settings"), t("settings_coming_soon"));
+                  }, 300);
                 }}
               >
-                {t('help_support')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="settings"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("settings")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* About */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(() => {
-                  Alert.alert(t('about'), t('about_coming_soon'));
-                }, 300);
-              }}
-            >
-              <Ionicons 
-                name="information-circle" 
-                size={24} 
-                color="#4A90E2" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* Help & Support */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(() => {
+                    Alert.alert(t("help_support"), t("help_coming_soon"));
+                  }, 300);
                 }}
               >
-                {t('about')}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="help-circle"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("help_support")}
+                </Text>
+              </TouchableOpacity>
 
-            {/* Logout */}
-            <TouchableOpacity 
-              style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                paddingHorizontal: 8,
-                marginBottom: 8,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              }}
-              onPress={() => {
-                closeDrawer();
-                setTimeout(handleGoToLogin, 300);
-              }}
-            >
-              <Ionicons 
-                name="log-out-outline" 
-                size={28} 
-                color="red" 
-                style={{ 
-                  marginRight: isRTL ? 0 : 16, 
-                  marginLeft: isRTL ? 16 : 0 
-                }} 
-              />
-              <Text 
+              {/* About */}
+              <TouchableOpacity
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#1E293B',
-                  textAlign: isRTL ? 'right' : 'left',
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(() => {
+                    Alert.alert(t("about"), t("about_coming_soon"));
+                  }, 300);
                 }}
               >
-                {t('logout')}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
+                <Ionicons
+                  name="information-circle"
+                  size={24}
+                  color="#4A90E2"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("about")}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Logout */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  paddingVertical: 16,
+                  paddingHorizontal: 8,
+                  marginBottom: 8,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                }}
+                onPress={() => {
+                  closeDrawer();
+                  setTimeout(handleGoToLogin, 300);
+                }}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={28}
+                  color="red"
+                  style={{
+                    marginRight: isRTL ? 0 : 16,
+                    marginLeft: isRTL ? 16 : 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: "#1E293B",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {t("logout")}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
     );
   };
 
   return (
-    <SafeAreaView 
-      style={{ 
-        flex: 1, 
-        backgroundColor: '#E6F3F8',
-        paddingTop: Platform.OS === 'android' ? 0 : undefined 
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: "#E6F3F8",
+        paddingTop: Platform.OS === "android" ? 0 : undefined,
       }}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#E6F3F8" />
-      <ScrollView 
+      <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ 
+        contentContainerStyle={{
           flexGrow: 1,
-          paddingHorizontal: Platform.OS === 'android' ? 12 : 16,
-          paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 110, 130) : 100,
+          paddingHorizontal: Platform.OS === "android" ? 12 : 16,
+          paddingBottom:
+            Platform.OS === "android"
+              ? Math.max(insets.bottom + 110, 130)
+              : 100,
         }}
         showsVerticalScrollIndicator={false}
       >
         {/* --- Updated Header --- */}
-        <View 
+        <View
           style={{
-            flexDirection: isRTL ? 'row-reverse' : 'row',
-            alignItems: 'center',
-            marginTop: Platform.OS === 'android' ? Math.max(insets.top + 35, 55) : 32,
-            marginBottom: Platform.OS === 'android' ? 15 : 10,
-            paddingHorizontal: Platform.OS === 'android' ? 12 : 0,
-            justifyContent: Platform.OS === 'android' ? 'flex-start' : 'space-between',
-            backgroundColor: Platform.OS === 'android' ? 'transparent' : undefined,
-            width: '100%',
+            flexDirection: isRTL ? "row-reverse" : "row",
+            alignItems: "center",
+            marginTop:
+              Platform.OS === "android" ? Math.max(insets.top + 35, 55) : 32,
+            marginBottom: Platform.OS === "android" ? 15 : 10,
+            paddingHorizontal: Platform.OS === "android" ? 12 : 0,
+            justifyContent:
+              Platform.OS === "android" ? "flex-start" : "space-between",
+            backgroundColor:
+              Platform.OS === "android" ? "transparent" : undefined,
+            width: "100%",
           }}
         >
           {/* Menu Icon */}
-          <TouchableOpacity 
-            onPress={handleMenuPress} 
+          <TouchableOpacity
+            onPress={handleMenuPress}
             style={{
-              marginRight: Platform.OS === 'android' && !isRTL ? 16 : 0,
-              marginLeft: Platform.OS === 'android' && isRTL ? 16 : 0,
-              padding: Platform.OS === 'android' ? 12 : 0,
-              minWidth: Platform.OS === 'android' ? 48 : 32,
-              minHeight: Platform.OS === 'android' ? 48 : 32,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: Platform.OS === 'android' ? 'rgba(74, 144, 226, 0.1)' : 'transparent',
-              borderRadius: Platform.OS === 'android' ? 8 : 0,
+              marginRight: Platform.OS === "android" && !isRTL ? 16 : 0,
+              marginLeft: Platform.OS === "android" && isRTL ? 16 : 0,
+              padding: Platform.OS === "android" ? 12 : 0,
+              minWidth: Platform.OS === "android" ? 48 : 32,
+              minHeight: Platform.OS === "android" ? 48 : 32,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor:
+                Platform.OS === "android"
+                  ? "rgba(74, 144, 226, 0.1)"
+                  : "transparent",
+              borderRadius: Platform.OS === "android" ? 8 : 0,
             }}
           >
-            <Ionicons name="menu" size={Platform.OS === 'android' ? 28 : 32} color="#4A90E2" />
+            <Ionicons
+              name="menu"
+              size={Platform.OS === "android" ? 28 : 32}
+              color="#4A90E2"
+            />
           </TouchableOpacity>
-          
+
           {/* Title and Subtitle */}
-          <View style={{ 
-            alignItems: Platform.OS === 'ios' ? 'center' : (isRTL ? 'flex-end' : 'flex-start'),
-            flex: Platform.OS === 'android' ? 1 : 0,
-            paddingHorizontal: Platform.OS === 'android' ? 12 : 0,
-            paddingVertical: Platform.OS === 'android' ? 8 : 0,
-          }}>
-            <Text 
+          <View
+            style={{
+              alignItems:
+                Platform.OS === "ios"
+                  ? "center"
+                  : isRTL
+                    ? "flex-end"
+                    : "flex-start",
+              flex: Platform.OS === "android" ? 1 : 0,
+              paddingHorizontal: Platform.OS === "android" ? 12 : 0,
+              paddingVertical: Platform.OS === "android" ? 8 : 0,
+            }}
+          >
+            <Text
               style={{
-                fontSize: Platform.OS === 'android' ? 26 : 30,
-                fontWeight: 'bold',
-                color: '#1E293B',
-                textAlign: Platform.OS === 'android' ? (isRTL ? 'right' : 'left') : 'center',
+                fontSize: Platform.OS === "android" ? 26 : 30,
+                fontWeight: "bold",
+                color: "#1E293B",
+                textAlign:
+                  Platform.OS === "android"
+                    ? isRTL
+                      ? "right"
+                      : "left"
+                    : "center",
               }}
             >
-              {t('seizure_tracker')}
+              {t("seizure_tracker")}
             </Text>
-            <Text 
+            <Text
               style={{
-                fontSize: Platform.OS === 'android' ? 16 : 18,
-                color: '#64748B',
-                textAlign: Platform.OS === 'android' ? (isRTL ? 'right' : 'left') : 'center',
-                lineHeight: Platform.OS === 'android' ? 22 : 24,
-                marginTop: Platform.OS === 'android' ? 4 : 0,
+                fontSize: Platform.OS === "android" ? 16 : 18,
+                color: "#64748B",
+                textAlign:
+                  Platform.OS === "android"
+                    ? isRTL
+                      ? "right"
+                      : "left"
+                    : "center",
+                lineHeight: Platform.OS === "android" ? 22 : 24,
+                marginTop: Platform.OS === "android" ? 4 : 0,
               }}
             >
-              {t('pediatric_seizure_monitoring')}
+              {t("pediatric_seizure_monitoring")}
             </Text>
           </View>
 
           {/* Spacer View for iOS to keep title centered */}
-          {Platform.OS === 'ios' && <View style={{ width: 32 }} />}
+          {Platform.OS === "ios" && <View style={{ width: 32 }} />}
         </View>
 
         {/* Feature Buttons Grid Container */}
-        <View style={{ 
-          flex: 1, 
-          justifyContent: Platform.OS === 'android' ? 'center' : 'flex-start',
-          marginTop: Platform.OS === 'android' ? 30 : 0,
-          paddingHorizontal: Platform.OS === 'android' ? 4 : 0,
-        }}>
-          <View 
+        <View
+          style={{
+            flex: 1,
+            justifyContent: Platform.OS === "android" ? "center" : "flex-start",
+            marginTop: Platform.OS === "android" ? 30 : 0,
+            paddingHorizontal: Platform.OS === "android" ? 4 : 0,
+          }}
+        >
+          <View
             style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              marginTop: Platform.OS === 'android' ? 0 : 32,
-              paddingBottom: Platform.OS === 'android' ? 30 : 40,
-              alignItems: Platform.OS === 'android' ? 'center' : 'flex-start',
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              marginTop: Platform.OS === "android" ? 0 : 32,
+              paddingBottom: Platform.OS === "android" ? 30 : 40,
+              alignItems: Platform.OS === "android" ? "center" : "flex-start",
             }}
           >
-          {/* Seizure Diary */}
-          <TouchableOpacity 
-            style={cardStyle}
-            onPress={handleSeizureDiary}
-          >
-            <View style={{ marginBottom: 16, padding: 8 }}>
-              <Ionicons name="calendar" size={60} color="#4A90E2" />
-            </View>
-            <Text 
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                color: '#1E293B',
-                marginBottom: 8,
-                textAlign: 'center',
-              }}
-            >
-              {t('seizure_diary')}
-            </Text>
-            <Text 
-              style={{
-                fontSize: 16,
-                color: '#64748B',
-                textAlign: 'center',
-                lineHeight: 20,
-              }}
-            >
-              {t('seizure_diary_desc')}
-            </Text>
-          </TouchableOpacity>
+            {/* Seizure Diary */}
+            <TouchableOpacity style={cardStyle} onPress={handleSeizureDiary}>
+              <View style={{ marginBottom: 16, padding: 8 }}>
+                <Ionicons name="calendar" size={60} color="#4A90E2" />
+              </View>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: "#1E293B",
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
+                {t("seizure_diary")}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#64748B",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                {t("seizure_diary_desc")}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Medication Reminder */}
-          <TouchableOpacity 
-            style={cardStyle}
-            onPress={handleMedicationReminder}
-          >
-            <View style={{ marginBottom: 16, padding: 8 }}>
-              <Ionicons name="medical" size={60} color="#4A90E2" />
-            </View>
-            <Text 
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                color: '#1E293B',
-                marginBottom: 8,
-                textAlign: 'center',
-              }}
+            {/* Medication Reminder */}
+            <TouchableOpacity
+              style={cardStyle}
+              onPress={handleMedicationReminder}
             >
-              {t('medication_reminder')}
-            </Text>
-            <Text 
-              style={{
-                fontSize: 16,
-                color: '#64748B',
-                textAlign: 'center',
-                lineHeight: 20,
-              }}
-            >
-              {t('medication_reminder_desc')}
-            </Text>
-          </TouchableOpacity>
+              <View style={{ marginBottom: 16, padding: 8 }}>
+                <Ionicons name="medical" size={60} color="#4A90E2" />
+              </View>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: "#1E293B",
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
+                {t("medication_reminder")}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#64748B",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                {t("medication_reminder_desc")}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Doctor Connect */}
-          <TouchableOpacity 
-            style={cardStyle}
-            onPress={handleDoctorConnect}
-          >
-            <View style={{ marginBottom: 16, padding: 8 }}>
-              <Ionicons name="people" size={60} color="#4A90E2" />
-            </View>
-            <Text 
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                color: '#1E293B',
-                marginBottom: 8,
-                textAlign: 'center',
-              }}
-            >
-              {t('doctor_connect')}
-            </Text>
-            <Text 
-              style={{
-                fontSize: 16,
-                color: '#64748B',
-                textAlign: 'center',
-                lineHeight: 20,
-              }}
-            >
-              {t('doctor_connect_desc')}
-            </Text>
-          </TouchableOpacity>
+            {/* Doctor Connect */}
+            <TouchableOpacity style={cardStyle} onPress={handleDoctorConnect}>
+              <View style={{ marginBottom: 16, padding: 8 }}>
+                <Ionicons name="people" size={60} color="#4A90E2" />
+              </View>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: "#1E293B",
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
+                {t("doctor_connect")}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#64748B",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                {t("doctor_connect_desc")}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Education */}
-          <TouchableOpacity 
-            style={cardStyle}
-            onPress={handleEducation}
-          >
-            <View style={{ marginBottom: 16, padding: 8 }}>
-              <Ionicons name="book" size={60} color="#4A90E2" />
-            </View>
-            <Text 
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                color: '#1E293B',
-                marginBottom: 8,
-                textAlign: 'center',
-              }}
-            >
-              {t('education')}
-            </Text>
-            <Text 
-              style={{
-                fontSize: 16,
-                color: '#64748B',
-                textAlign: 'center',
-                lineHeight: 20,
-              }}
-            >
-              {t('education_desc')}
-            </Text>
-          </TouchableOpacity>
+            {/* Education */}
+            <TouchableOpacity style={cardStyle} onPress={handleEducation}>
+              <View style={{ marginBottom: 16, padding: 8 }}>
+                <Ionicons name="book" size={60} color="#4A90E2" />
+              </View>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: "#1E293B",
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
+                {t("education")}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#64748B",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                {t("education_desc")}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
       {/* Drawer Component */}
       <DrawerMenu />
-      
+
       {/* Language Selector Modal */}
-      <LanguageSelector 
+      <LanguageSelector
         visible={isLanguageSelectorVisible}
         onClose={() => setIsLanguageSelectorVisible(false)}
       />
-      <FloatingChatbot 
+      <FloatingChatbot
         apiEndpoint="https://api.openai.com/v1/chat/completions"
-        position={{ 
-          bottom: Platform.OS === 'android' ? Math.max(insets.bottom + 130, 150) : 155, 
-          right: 20 
+        position={{
+          bottom:
+            Platform.OS === "android"
+              ? Math.max(insets.bottom + 130, 150)
+              : 155,
+          right: 20,
         }}
         chatPosition="center"
       />
