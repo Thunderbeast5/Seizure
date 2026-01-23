@@ -1,17 +1,27 @@
 // context/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  User, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile,
-  getIdToken
-} from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../firebase.config';
-import type { Auth } from 'firebase/auth';
+import {
+    User,
+    createUserWithEmailAndPassword,
+    getIdToken,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+    updateProfile,
+} from "firebase/auth";
+import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    setDoc,
+    where,
+} from "firebase/firestore";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { auth, db } from "../firebase.config";
 
 interface UserData {
   uid: string;
@@ -51,20 +61,22 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    console.warn('useAuth called outside of AuthProvider, returning null');
+    console.warn("useAuth called outside of AuthProvider, returning null");
     return null;
   }
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!auth) {
-      console.error('Auth is not initialized');
+      console.error("Auth is not initialized");
       setLoading(false);
       return;
     }
@@ -72,35 +84,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // React Native Firebase Auth has automatic persistence enabled by default
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user?.uid);
+      console.log("Auth state changed:", user?.uid);
       setUser(user);
-      
+
       if (user) {
         try {
-          console.log('Setting up real-time listener for user data:', user.uid);
-          const userDocRef = doc(db, 'profiles', user.uid);
-          
-          // Set up real-time listener for user data
-          const unsubscribeUserData = onSnapshot(userDocRef, (doc) => {
-            if (doc.exists()) {
-              const data = doc.data() as UserData;
-              console.log('User data updated:', data);
-              setUserData(data);
-            } else {
-              console.log('No user document found');
-              setUserData(null);
+          // Repair/migrate legacy profiles: ensure profiles/{uid} exists (some older data may be under random doc IDs)
+          try {
+            const canonicalRef = doc(db, "profiles", user.uid);
+            const canonicalSnap = await getDoc(canonicalRef);
+            if (!canonicalSnap.exists() && user.email) {
+              // Always create a minimal canonical profile doc first (safe + required by doctor portal/rules).
+              // This also avoids relying on reading other profile docs, which may be blocked by security rules.
+              await setDoc(
+                canonicalRef,
+                {
+                  uid: user.uid,
+                  email: user.email,
+                  name:
+                    user.displayName || user.email?.split("@")?.[0] || "User",
+                  updatedAt: serverTimestamp(),
+                },
+                { merge: true },
+              );
+
+              const legacyQuery = query(
+                collection(db, "profiles"),
+                where("email", "==", user.email),
+                limit(1),
+              );
+              try {
+                const legacySnap = await getDocs(legacyQuery);
+                if (!legacySnap.empty) {
+                  const legacyDoc = legacySnap.docs[0];
+                  const legacyData = legacyDoc.data();
+                  await setDoc(
+                    canonicalRef,
+                    {
+                      ...legacyData,
+                      uid: user.uid,
+                      updatedAt: serverTimestamp(),
+                    },
+                    { merge: true },
+                  );
+                }
+              } catch (e) {
+                // Non-fatal: security rules may block reading legacy profile docs.
+                console.warn("Legacy profile lookup skipped:", e);
+              }
             }
-            setLoading(false);
-          }, (error) => {
-            console.error('Error in user data real-time listener:', error);
-            setUserData(null);
-            setLoading(false);
-          });
-          
+          } catch (e) {
+            console.error("Profile migration/repair failed (non-fatal):", e);
+          }
+
+          console.log("Setting up real-time listener for user data:", user.uid);
+          const userDocRef = doc(db, "profiles", user.uid);
+
+          // Set up real-time listener for user data
+          const unsubscribeUserData = onSnapshot(
+            userDocRef,
+            (doc) => {
+              if (doc.exists()) {
+                const data = doc.data() as UserData;
+                console.log("User data updated:", data);
+                setUserData(data);
+              } else {
+                console.log("No user document found");
+                setUserData(null);
+              }
+              setLoading(false);
+            },
+            (error) => {
+              console.error("Error in user data real-time listener:", error);
+              setUserData(null);
+              setLoading(false);
+            },
+          );
+
           // Store unsubscribe function for cleanup
           return () => unsubscribeUserData();
         } catch (error) {
-          console.error('Error setting up user data listener:', error);
+          console.error("Error setting up user data listener:", error);
           setUserData(null);
           setLoading(false);
         }
@@ -115,70 +179,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     if (!auth) {
-      throw new Error('Authentication not initialized');
+      throw new Error("Authentication not initialized");
     }
     try {
-      console.log('Attempting login for:', email);
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Login successful for:', userCredential.user.uid);
+      console.log("Attempting login for:", email);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      console.log("Login successful for:", userCredential.user.uid);
     } catch (error) {
-      console.error('Login error in context:', error);
+      console.error("Login error in context:", error);
       throw error;
     }
   };
 
   const register = async (registerData: RegisterData) => {
     if (!auth || !db) {
-      throw new Error('Firebase services not initialized');
+      throw new Error("Firebase services not initialized");
     }
-    
+
     try {
       const { email, password, ...otherData } = registerData;
-      
-      console.log('Creating user account for:', email);
+
+      console.log("Creating user account for:", email);
       // Create user account
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       const user = userCredential.user;
-      
-      console.log('User account created:', user.uid);
+
+      console.log("User account created:", user.uid);
 
       // Update user profile
       await updateProfile(user, {
-        displayName: registerData.name
+        displayName: registerData.name,
       });
-      
-      console.log('Profile updated');
+
+      console.log("Profile updated");
 
       // Save additional user data to Firestore
       const userData: UserData = {
         uid: user.uid,
         email: user.email!,
         ...otherData,
-        createdAt: serverTimestamp() // Use server timestamp instead of new Date()
+        createdAt: serverTimestamp(), // Use server timestamp instead of new Date()
       };
 
-      console.log('Saving user data to Firestore:', userData);
-      
+      console.log("Saving user data to Firestore:", userData);
+
       // Use merge: true to ensure the document is created or updated
-      await setDoc(doc(db, 'profiles', user.uid), userData, { merge: true });
-      
-      console.log('User data saved successfully');
-      
+      await setDoc(doc(db, "profiles", user.uid), userData, { merge: true });
+
+      console.log("User data saved successfully");
     } catch (error) {
-      console.error('Registration error in context:', error);
+      console.error("Registration error in context:", error);
       throw error;
     }
   };
 
   const logout = async () => {
     if (!auth) {
-      throw new Error('Authentication not initialized');
+      throw new Error("Authentication not initialized");
     }
     try {
       await signOut(auth);
       setUserData(null); // Clear user data on logout
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       throw error;
     }
   };
@@ -187,10 +258,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       try {
         const token = await getIdToken(user, true); // Force refresh
-        console.log('Token refreshed successfully');
+        console.log("Token refreshed successfully");
         return token;
       } catch (error) {
-        console.error('Error refreshing token:', error);
+        console.error("Error refreshing token:", error);
         throw error;
       }
     }
@@ -203,12 +274,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
-    refreshToken
+    refreshToken,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1,19 +1,18 @@
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where,
-    onSnapshot,
-    orderBy,
-    Unsubscribe
-} from 'firebase/firestore';
-import { db } from '../firebase.config';
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  Unsubscribe,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "../firebase.config";
 
 export interface PatientSeizure {
   id?: string;
@@ -36,16 +35,22 @@ export interface PatientMedication {
   name: string;
   dosage: string;
   frequency: string;
+  time?: string[];
   startDate: string;
   endDate?: string;
   notes?: string;
   isActive: boolean;
+  active?: boolean;
   createdAt?: any;
   updatedAt?: any;
 }
 
 export interface PatientProfile {
   id: string;
+  name?: string;
+  age?: number;
+  gender?: string;
+  seizureType?: string;
   child?: {
     name: string;
     age: number;
@@ -61,72 +66,166 @@ export interface PatientProfile {
 }
 
 class PatientDataService {
-  private seizuresCollection = 'seizures';
-  private medicationsCollection = 'medications';
-  private profilesCollection = 'profiles';
+  private seizuresCollection = "seizures";
+  private medicationsCollection = "medications";
+  private profilesCollection = "profiles";
 
   // ===== REAL-TIME LISTENERS =====
 
   // Real-time listener for patient seizures
-  subscribeToPatientSeizures(patientId: string, callback: (seizures: PatientSeizure[]) => void): Unsubscribe {
+  subscribeToPatientSeizures(
+    patientId: string,
+    callback: (seizures: PatientSeizure[]) => void,
+  ): Unsubscribe {
+    if (!patientId) {
+      callback([]);
+      return () => {};
+    }
+
     const seizuresQuery = query(
       collection(db, this.seizuresCollection),
-      where('userId', '==', patientId),
-      orderBy('date', 'desc')
+      where("userId", "==", patientId),
     );
-    
-    return onSnapshot(seizuresQuery, (querySnapshot) => {
-      const seizures: PatientSeizure[] = [];
-      querySnapshot.forEach((doc) => {
-        seizures.push({
-          id: doc.id,
-          ...doc.data()
-        } as PatientSeizure);
-      });
-      callback(seizures);
-    }, (error) => {
-      console.error('Error in seizures real-time listener:', error);
-    });
+
+    try {
+      return onSnapshot(
+        seizuresQuery,
+        (querySnapshot) => {
+          const seizures: PatientSeizure[] = [];
+          querySnapshot.forEach((doc) => {
+            seizures.push({
+              id: doc.id,
+              ...doc.data(),
+            } as PatientSeizure);
+          });
+
+          // Sort client-side (most recent first) to avoid composite index requirement
+          seizures.sort((a, b) => {
+            const dateA = new Date(`${a.date} ${a.time || "00:00"}`).getTime();
+            const dateB = new Date(`${b.date} ${b.time || "00:00"}`).getTime();
+            return dateB - dateA;
+          });
+
+          callback(seizures);
+        },
+        (error) => {
+          console.error("Error in seizures real-time listener:", error);
+          // Return safe default so UI can still render and doesn't stay stuck
+          callback([]);
+        },
+      );
+    } catch (e) {
+      console.error("Failed to set up seizures real-time listener:", e);
+      callback([]);
+      return () => {};
+    }
   }
 
   // Real-time listener for patient medications
-  subscribeToPatientMedications(patientId: string, callback: (medications: PatientMedication[]) => void): Unsubscribe {
+  subscribeToPatientMedications(
+    patientId: string,
+    callback: (medications: PatientMedication[]) => void,
+  ): Unsubscribe {
+    if (!patientId) {
+      callback([]);
+      return () => {};
+    }
+
     const medicationsQuery = query(
       collection(db, this.medicationsCollection),
-      where('userId', '==', patientId),
-      orderBy('startDate', 'desc')
+      where("userId", "==", patientId),
     );
-    
-    return onSnapshot(medicationsQuery, (querySnapshot) => {
-      const medications: PatientMedication[] = [];
-      querySnapshot.forEach((doc) => {
-        medications.push({
-          id: doc.id,
-          ...doc.data()
-        } as PatientMedication);
-      });
-      callback(medications);
-    }, (error) => {
-      console.error('Error in medications real-time listener:', error);
-    });
+
+    try {
+      return onSnapshot(
+        medicationsQuery,
+        (querySnapshot) => {
+          const medications: PatientMedication[] = [];
+          querySnapshot.forEach((doc) => {
+            const data: any = doc.data();
+            const derivedStartDate = data?.startDate
+              ? data.startDate
+              : data?.createdAt?.toDate
+                ? data.createdAt.toDate().toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0];
+
+            const derivedIsActive =
+              data?.isActive !== undefined
+                ? Boolean(data.isActive)
+                : data?.active !== undefined
+                  ? Boolean(data.active)
+                  : true;
+
+            medications.push({
+              id: doc.id,
+              ...data,
+              startDate: derivedStartDate,
+              isActive: derivedIsActive,
+            } as PatientMedication);
+          });
+
+          // Sort client-side (newest first). Prefer createdAt if present.
+          medications.sort((a: any, b: any) => {
+            const aTime = a?.createdAt?.toDate
+              ? a.createdAt.toDate().getTime()
+              : 0;
+            const bTime = b?.createdAt?.toDate
+              ? b.createdAt.toDate().getTime()
+              : 0;
+            return bTime - aTime;
+          });
+
+          callback(medications);
+        },
+        (error) => {
+          console.error("Error in medications real-time listener:", error);
+          // Return safe default so UI can still render and doesn't stay stuck
+          callback([]);
+        },
+      );
+    } catch (e) {
+      console.error("Failed to set up medications real-time listener:", e);
+      callback([]);
+      return () => {};
+    }
   }
 
   // Real-time listener for patient profile
-  subscribeToPatientProfile(patientId: string, callback: (profile: PatientProfile | null) => void): Unsubscribe {
+  subscribeToPatientProfile(
+    patientId: string,
+    callback: (profile: PatientProfile | null) => void,
+  ): Unsubscribe {
+    if (!patientId) {
+      callback(null);
+      return () => {};
+    }
+
     const profileDocRef = doc(db, this.profilesCollection, patientId);
-    
-    return onSnapshot(profileDocRef, (doc) => {
-      if (doc.exists()) {
-        callback({
-          id: doc.id,
-          ...doc.data()
-        } as PatientProfile);
-      } else {
-        callback(null);
-      }
-    }, (error) => {
-      console.error('Error in profile real-time listener:', error);
-    });
+
+    try {
+      return onSnapshot(
+        profileDocRef,
+        (doc) => {
+          if (doc.exists()) {
+            callback({
+              id: doc.id,
+              ...doc.data(),
+            } as PatientProfile);
+          } else {
+            callback(null);
+          }
+        },
+        (error) => {
+          console.error("Error in profile real-time listener:", error);
+          // Return safe default so UI can still render and doesn't stay stuck
+          callback(null);
+        },
+      );
+    } catch (e) {
+      console.error("Failed to set up profile real-time listener:", e);
+      callback(null);
+      return () => {};
+    }
   }
 
   // ===== SEIZURE CRUD OPERATIONS =====
@@ -136,59 +235,73 @@ class PatientDataService {
     try {
       const seizuresQuery = query(
         collection(db, this.seizuresCollection),
-        where('userId', '==', patientId)
+        where("userId", "==", patientId),
       );
-      
+
       const querySnapshot = await getDocs(seizuresQuery);
       const seizures: PatientSeizure[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         seizures.push({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         } as PatientSeizure);
       });
-      
+
       // Sort by date in JavaScript (descending)
-      seizures.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+      seizures.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+
       return seizures;
     } catch (error) {
-      console.error('Error fetching patient seizures:', error);
+      console.error("Error fetching patient seizures:", error);
       throw error;
     }
   }
 
   // Add new seizure for patient
-  async addPatientSeizure(patientId: string, seizureData: Omit<PatientSeizure, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async addPatientSeizure(
+    patientId: string,
+    seizureData: Omit<
+      PatientSeizure,
+      "id" | "userId" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<string> {
     try {
       const seizure: PatientSeizure = {
         ...seizureData,
         userId: patientId,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       };
 
-      const docRef = await addDoc(collection(db, this.seizuresCollection), seizure);
-      console.log('Seizure added successfully:', docRef.id);
+      const docRef = await addDoc(
+        collection(db, this.seizuresCollection),
+        seizure,
+      );
+      console.log("Seizure added successfully:", docRef.id);
       return docRef.id;
     } catch (error) {
-      console.error('Error adding seizure:', error);
+      console.error("Error adding seizure:", error);
       throw error;
     }
   }
 
   // Update seizure
-  async updatePatientSeizure(seizureId: string, seizureData: Partial<PatientSeizure>): Promise<void> {
+  async updatePatientSeizure(
+    seizureId: string,
+    seizureData: Partial<PatientSeizure>,
+  ): Promise<void> {
     try {
       const seizureRef = doc(db, this.seizuresCollection, seizureId);
       await updateDoc(seizureRef, {
         ...seizureData,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       });
-      console.log('Seizure updated successfully');
+      console.log("Seizure updated successfully");
     } catch (error) {
-      console.error('Error updating seizure:', error);
+      console.error("Error updating seizure:", error);
       throw error;
     }
   }
@@ -197,9 +310,9 @@ class PatientDataService {
   async deletePatientSeizure(seizureId: string): Promise<void> {
     try {
       await deleteDoc(doc(db, this.seizuresCollection, seizureId));
-      console.log('Seizure deleted successfully');
+      console.log("Seizure deleted successfully");
     } catch (error) {
-      console.error('Error deleting seizure:', error);
+      console.error("Error deleting seizure:", error);
       throw error;
     }
   }
@@ -211,59 +324,74 @@ class PatientDataService {
     try {
       const medicationsQuery = query(
         collection(db, this.medicationsCollection),
-        where('userId', '==', patientId)
+        where("userId", "==", patientId),
       );
-      
+
       const querySnapshot = await getDocs(medicationsQuery);
       const medications: PatientMedication[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         medications.push({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         } as PatientMedication);
       });
-      
+
       // Sort by start date in JavaScript (descending)
-      medications.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-      
+      medications.sort(
+        (a, b) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
+      );
+
       return medications;
     } catch (error) {
-      console.error('Error fetching patient medications:', error);
+      console.error("Error fetching patient medications:", error);
       throw error;
     }
   }
 
   // Add new medication for patient
-  async addPatientMedication(patientId: string, medicationData: Omit<PatientMedication, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async addPatientMedication(
+    patientId: string,
+    medicationData: Omit<
+      PatientMedication,
+      "id" | "userId" | "createdAt" | "updatedAt"
+    >,
+  ): Promise<string> {
     try {
       const medication: PatientMedication = {
         ...medicationData,
         userId: patientId,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       };
 
-      const docRef = await addDoc(collection(db, this.medicationsCollection), medication);
-      console.log('Medication added successfully:', docRef.id);
+      const docRef = await addDoc(
+        collection(db, this.medicationsCollection),
+        medication,
+      );
+      console.log("Medication added successfully:", docRef.id);
       return docRef.id;
     } catch (error) {
-      console.error('Error adding medication:', error);
+      console.error("Error adding medication:", error);
       throw error;
     }
   }
 
   // Update medication
-  async updatePatientMedication(medicationId: string, medicationData: Partial<PatientMedication>): Promise<void> {
+  async updatePatientMedication(
+    medicationId: string,
+    medicationData: Partial<PatientMedication>,
+  ): Promise<void> {
     try {
       const medicationRef = doc(db, this.medicationsCollection, medicationId);
       await updateDoc(medicationRef, {
         ...medicationData,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       });
-      console.log('Medication updated successfully');
+      console.log("Medication updated successfully");
     } catch (error) {
-      console.error('Error updating medication:', error);
+      console.error("Error updating medication:", error);
       throw error;
     }
   }
@@ -272,9 +400,9 @@ class PatientDataService {
   async deletePatientMedication(medicationId: string): Promise<void> {
     try {
       await deleteDoc(doc(db, this.medicationsCollection, medicationId));
-      console.log('Medication deleted successfully');
+      console.log("Medication deleted successfully");
     } catch (error) {
-      console.error('Error deleting medication:', error);
+      console.error("Error deleting medication:", error);
       throw error;
     }
   }
@@ -284,33 +412,38 @@ class PatientDataService {
   // Get patient profile
   async getPatientProfile(patientId: string): Promise<PatientProfile | null> {
     try {
-      const profileDoc = await getDoc(doc(db, this.profilesCollection, patientId));
-      
+      const profileDoc = await getDoc(
+        doc(db, this.profilesCollection, patientId),
+      );
+
       if (!profileDoc.exists()) {
         return null;
       }
-      
+
       return {
         id: profileDoc.id,
-        ...profileDoc.data()
+        ...profileDoc.data(),
       } as PatientProfile;
     } catch (error) {
-      console.error('Error fetching patient profile:', error);
+      console.error("Error fetching patient profile:", error);
       throw error;
     }
   }
 
   // Update patient profile
-  async updatePatientProfile(patientId: string, profileData: Partial<PatientProfile>): Promise<void> {
+  async updatePatientProfile(
+    patientId: string,
+    profileData: Partial<PatientProfile>,
+  ): Promise<void> {
     try {
       const profileRef = doc(db, this.profilesCollection, patientId);
       await updateDoc(profileRef, {
         ...profileData,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       });
-      console.log('Patient profile updated successfully');
+      console.log("Patient profile updated successfully");
     } catch (error) {
-      console.error('Error updating patient profile:', error);
+      console.error("Error updating patient profile:", error);
       throw error;
     }
   }
@@ -327,16 +460,16 @@ class PatientDataService {
       const [profile, seizures, medications] = await Promise.all([
         this.getPatientProfile(patientId),
         this.getPatientSeizures(patientId),
-        this.getPatientMedications(patientId)
+        this.getPatientMedications(patientId),
       ]);
 
       return {
         profile,
         seizures,
-        medications
+        medications,
       };
     } catch (error) {
-      console.error('Error fetching complete patient data:', error);
+      console.error("Error fetching complete patient data:", error);
       throw error;
     }
   }
@@ -352,34 +485,34 @@ class PatientDataService {
   }> {
     try {
       const seizures = await this.getPatientSeizures(patientId);
-      
+
       const totalSeizures = seizures.length;
       const lastSeizureDate = seizures.length > 0 ? seizures[0].date : null;
-      
+
       // Calculate average seizures per month (last 6 months)
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      
-      const recentSeizures = seizures.filter(seizure => 
-        new Date(seizure.date) >= sixMonthsAgo
+
+      const recentSeizures = seizures.filter(
+        (seizure) => new Date(seizure.date) >= sixMonthsAgo,
       );
-      
+
       const averageSeizuresPerMonth = recentSeizures.length / 6;
-      
+
       // Count seizure types
       const seizureTypes: { [key: string]: number } = {};
-      seizures.forEach(seizure => {
+      seizures.forEach((seizure) => {
         seizureTypes[seizure.type] = (seizureTypes[seizure.type] || 0) + 1;
       });
-      
+
       return {
         totalSeizures,
         lastSeizureDate,
         averageSeizuresPerMonth,
-        seizureTypes
+        seizureTypes,
       };
     } catch (error) {
-      console.error('Error calculating seizure statistics:', error);
+      console.error("Error calculating seizure statistics:", error);
       throw error;
     }
   }
