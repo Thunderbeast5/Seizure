@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  ExclamationTriangleIcon, 
-  MapPinIcon, 
-  ClockIcon,
-  PhoneIcon,
-  CheckCircleIcon,
-  XMarkIcon
+import {
+    CheckCircleIcon,
+    ClockIcon,
+    ExclamationTriangleIcon,
+    MapPinIcon,
+    PhoneIcon
 } from '@heroicons/react/24/outline';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
 import { db } from '../firebase.config';
 
 interface EmergencyAlert {

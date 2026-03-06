@@ -1,38 +1,38 @@
 import {
-    ArrowRightOnRectangleIcon,
-    BellIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    ChatBubbleLeftIcon,
-    ExclamationTriangleIcon,
-    MagnifyingGlassIcon,
-    UserGroupIcon,
+  ArrowRightOnRectangleIcon,
+  BellIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ChatBubbleLeftIcon,
+  ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { doc as fsDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    Line,
-    LineChart,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { useAuth } from "../contexts/AuthContext";
 import { db, onForegroundMessage, requestFcmToken } from "../firebase.config";
 import { doctorService, PatientSummary } from "../services/doctorService";
 import {
-    patientDataService,
-    PatientSeizure,
+  patientDataService,
+  PatientSeizure,
 } from "../services/patientDataService";
 import { ChatList } from "./ChatList";
 import { ConnectionRequests } from "./ConnectionRequests";
@@ -292,7 +292,7 @@ export const Dashboard: React.FC = () => {
         if ("serviceWorker" in navigator) {
           await navigator.serviceWorker.register("/firebase-messaging-sw.js");
         }
-        const vapid = (process.env.REACT_APP_VAPID_KEY as string) || "";
+        const vapid = (import.meta.env.VITE_VAPID_KEY || import.meta.env.REACT_APP_VAPID_KEY || process.env?.REACT_APP_VAPID_KEY) as string || "";
         if (vapid) {
           const token = await requestFcmToken(vapid);
           if (token && user?.uid) {

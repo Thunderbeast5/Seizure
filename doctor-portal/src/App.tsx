@@ -1,64 +1,89 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import './App.css';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { PatientPage } from './pages/PatientPage';
+import { AppLayout } from './components/Layout/AppLayout';
+import { LoadingPage } from './components/Layout/LoadingPage';
 
-function App() {
+/* ---- Lazy-loaded pages for code splitting ---- */
+const LoginPage = lazy(() =>
+  import('./pages/LoginPage').then((m) => ({ default: m.LoginPage }))
+);
+const RegisterPage = lazy(() =>
+  import('./pages/RegisterPage').then((m) => ({ default: m.RegisterPage }))
+);
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const PatientListPage = lazy(() =>
+  import('./pages/PatientListPage').then((m) => ({ default: m.PatientListPage }))
+);
+const PatientPage = lazy(() =>
+  import('./pages/PatientPage').then((m) => ({ default: m.PatientPage }))
+);
+const PatientSearchPage = lazy(() =>
+  import('./pages/PatientSearchPage').then((m) => ({ default: m.PatientSearchPage }))
+);
+const MessagesPage = lazy(() =>
+  import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage }))
+);
+const EmergencyAlertsPage = lazy(() =>
+  import('./pages/EmergencyAlertsPage').then((m) => ({ default: m.EmergencyAlertsPage }))
+);
+const ConnectionsPage = lazy(() =>
+  import('./pages/ConnectionsPage').then((m) => ({ default: m.ConnectionsPage }))
+);
+
+const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes - redirect to dashboard if authenticated */}
-          <Route 
-            path="/login" 
-            element={
-              <PublicRoute>
-                <LoginPage />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/register" 
-            element={
-              <PublicRoute>
-                <RegisterPage />
-              </PublicRoute>
-            } 
-          />
+    <BrowserRouter>
+      <AuthProvider>
+        <Suspense fallback={<LoadingPage />}>
+          <Routes>
+            {/* Public (auth) routes — no navbar/footer */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <LoginPage />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <RegisterPage />
+                </PublicRoute>
+              }
+            />
 
-          {/* Protected Routes - require authentication */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/patient/:patientId" 
-            element={
-              <ProtectedRoute>
-                <PatientPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected routes — wrapped in AppLayout (navbar + footer) */}
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/patients" element={<PatientListPage />} />
+              <Route path="/patients/search" element={<PatientSearchPage />} />
+              <Route path="/patients/:patientId" element={<PatientPage />} />
+              <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/emergencies" element={<EmergencyAlertsPage />} />
+              <Route path="/connections" element={<ConnectionsPage />} />
+            </Route>
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+            {/* Fallback */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
+    </BrowserRouter>
   );
-}
+};
 
 export default App;
