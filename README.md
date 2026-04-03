@@ -359,6 +359,6 @@ For support and questions:
 - [ ] Push notifications
 - [ ] Emergency response integration
 
----
+--hi
 
 **Built with ❤️ for better healthcare management**
